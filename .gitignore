@@ -1,0 +1,21 @@
+# 이미지, 라벨링 파일 무시
+*.xml
+*.txt
+*.json
+*.csv
+*.xlsx
+*.jpg
+*.png
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+*.ico
+*.webp
+
+# 예외 처리
+!./TXT/*
+
+# 특정 OS에서 자동으로 생성되는 파일 무시
+.DS_Store
+Thumbs.db
