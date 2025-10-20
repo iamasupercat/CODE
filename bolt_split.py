@@ -135,16 +135,11 @@ def collect_yolo_images_from_folders(base_folders, subfolder_names):
                 for img_file in img_files:
                     img_name = os.path.basename(img_file)
                     
-                    # 상대경로를 절대경로로 변환
-                    if base_folder.startswith('./'):
-                        folder_name = base_folder[2:]  # ./ 제거
-                    elif base_folder.startswith('.'):
-                        folder_name = base_folder[1:]  # . 제거
-                    else:
-                        folder_name = base_folder
-                    
-                    # 절대경로 생성
-                    absolute_path = f"/home/work/datasets/{folder_name}/{subfolder_name}/{quality}/images/{img_name}"
+                    # base_folder는 디렉토리 이름(예: '0616')로 저장하고,
+                    # 실제로 찾은 파일 경로를 절대경로로 사용합니다.
+                    folder_name = os.path.basename(base_folder.rstrip(os.sep))
+                    # glob으로 찾은 파일 경로(img_file)를 그대로 절대경로로 사용
+                    absolute_path = os.path.abspath(img_file)
                     
                     # 이미지 정보 저장
                     img_info = {
@@ -168,8 +163,10 @@ def collect_yolo_images_from_folders(base_folders, subfolder_names):
 
                     for img_file in aug_img_files:
                         img_name = os.path.basename(img_file)
-                        # 증강 이미지도 절대경로로 생성
-                        absolute_path = f"/home/work/datasets/{folder_name}/{subfolder_name}_aug/{quality}/images/{img_name}"
+                        # base_folder는 디렉토리 이름으로 저장
+                        folder_name = os.path.basename(base_folder.rstrip(os.sep))
+                        # glob으로 찾은 이미지 파일의 절대 경로 사용
+                        absolute_path = os.path.abspath(img_file)
                         image_id = extract_image_id(img_name)
                         
                         img_info = {
@@ -245,16 +242,10 @@ def collect_resnet_images_from_folders(base_folders, subfolder_names):
                         for img_file in img_files:
                             img_name = os.path.basename(img_file)
                             
-                            # 상대경로를 절대경로로 변환
-                            if base_folder.startswith('./'):
-                                folder_name = base_folder[2:]  # ./ 제거
-                            elif base_folder.startswith('.'):
-                                folder_name = base_folder[1:]  # . 제거
-                            else:
-                                folder_name = base_folder
-                            
-                            # 절대경로 생성
-                            absolute_path = f"/home/work/datasets/{folder_name}/{subfolder_name}/{quality}/{crop_folder}/{subdir}/{img_name}"
+                            # base_folder는 디렉토리 이름(예: '0616')로 저장하고,
+                            # glob으로 찾은 파일 경로(img_file)를 절대경로로 사용합니다.
+                            folder_name = os.path.basename(base_folder.rstrip(os.sep))
+                            absolute_path = os.path.abspath(img_file)
                             
                             # 라벨 결정 (bad는 0, good은 1)
                             # quality가 'bad'면 0, 'good'이면 1
@@ -552,35 +543,60 @@ def write_split_files(yolo_splits, resnet_splits, name=''):
         resnet_val_file = txt_dir / 'val_resnet.txt'
         resnet_test_file = txt_dir / 'test_resnet.txt'
 
-    # YOLO용 파일 저장 (경로만)
+    # YOLO용 파일 저장 (경로만) - 실제 파일이 존재하는 것만 기록
     yolo_train, yolo_val, yolo_test = yolo_splits
+    missing_yolo = []
+
+    def write_paths(file_path, imgs):
+        written = 0
+        with open(file_path, 'w') as f:
+            for img in imgs:
+                p = img['path']
+                if os.path.isfile(p):
+                    f.write(f"{p}\n")
+                    written += 1
+                else:
+                    missing_yolo.append(p)
+        return written
+
+    yolo_train_written = write_paths(yolo_train_file, yolo_train)
+    yolo_val_written = write_paths(yolo_val_file, yolo_val)
+    yolo_test_written = write_paths(yolo_test_file, yolo_test)
     
-    with open(yolo_train_file, 'w') as f:
-        for img in yolo_train:
-            f.write(f"{img['path']}\n")
+    # missing report for YOLO
+    if missing_yolo:
+        miss_file = txt_dir / f'missing_yolo_{name if name else "default"}.txt'
+        with open(miss_file, 'w') as mf:
+            for p in missing_yolo:
+                mf.write(p + '\n')
     
-    with open(yolo_val_file, 'w') as f:
-        for img in yolo_val:
-            f.write(f"{img['path']}\n")
-    
-    with open(yolo_test_file, 'w') as f:
-        for img in yolo_test:
-            f.write(f"{img['path']}\n")
-    
-    # ResNet용 파일 저장 (경로 라벨)
+    # ResNet용 파일 저장 (경로 라벨) - 실제 파일만 기록
     resnet_train, resnet_val, resnet_test = resnet_splits
-    
-    with open(resnet_train_file, 'w') as f:
-        for img in resnet_train:
-            f.write(f"{img['path']} {img['label']}\n")
-    
-    with open(resnet_val_file, 'w') as f:
-        for img in resnet_val:
-            f.write(f"{img['path']} {img['label']}\n")
-    
-    with open(resnet_test_file, 'w') as f:
-        for img in resnet_test:
-            f.write(f"{img['path']} {img['label']}\n")
+
+    missing_resnet = []
+
+    def write_paths_with_label(file_path, imgs):
+        written = 0
+        with open(file_path, 'w') as f:
+            for img in imgs:
+                p = img['path']
+                if os.path.isfile(p):
+                    f.write(f"{p} {img['label']}\n")
+                    written += 1
+                else:
+                    missing_resnet.append(p)
+        return written
+
+    resnet_train_written = write_paths_with_label(resnet_train_file, resnet_train)
+    resnet_val_written = write_paths_with_label(resnet_val_file, resnet_val)
+    resnet_test_written = write_paths_with_label(resnet_test_file, resnet_test)
+
+    # missing report for ResNet
+    if missing_resnet:
+        miss_file = txt_dir / f'missing_resnet_{name if name else "default"}.txt'
+        with open(miss_file, 'w') as mf:
+            for p in missing_resnet:
+                mf.write(p + '\n')
     
     print(f"\n=== 분할 결과 ===")
     print(f"YOLO용:")
