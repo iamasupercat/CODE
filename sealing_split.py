@@ -5,7 +5,7 @@
     python sealing_split.py \
         --folders 0616 0721 0728 0729 0731 0801 0804 0805 0806 \
         --subfolders frontdoor \
-        --name frontdoor
+        --name t
 
     # 결과: 
     # YOLO용: TXT/train_frontdoor.txt, TXT/val_frontdoor.txt, TXT/test_frontdoor.txt
@@ -257,6 +257,9 @@ def collect_yolo_images_from_original_folders(base_folders, subfolder_names, ori
                             folder_name = base_folder[2:]  # ./ 제거
                         elif base_folder.startswith('.'):
                             folder_name = base_folder[1:]  # . 제거
+                        elif base_folder.startswith('/home/work/datasets/'):
+                            # 절대경로인 경우 /home/work/datasets/ 제거
+                            folder_name = base_folder[len('/home/work/datasets/'):]
                         else:
                             folder_name = base_folder
                         
@@ -293,6 +296,9 @@ def collect_yolo_images_from_original_folders(base_folders, subfolder_names, ori
                                     folder_name = base_folder[2:]  # ./ 제거
                                 elif base_folder.startswith('.'):
                                     folder_name = base_folder[1:]  # . 제거
+                                elif base_folder.startswith('/home/work/datasets/'):
+                                    # 절대경로인 경우 /home/work/datasets/ 제거
+                                    folder_name = base_folder[len('/home/work/datasets/'):]
                                 else:
                                     folder_name = base_folder
                                 
@@ -383,6 +389,9 @@ def collect_resnet_images_from_original_folders(base_folders, subfolder_names, o
                                     folder_name = base_folder[2:]  # ./ 제거
                                 elif base_folder.startswith('.'):
                                     folder_name = base_folder[1:]  # . 제거
+                                elif base_folder.startswith('/home/work/datasets/'):
+                                    # 절대경로인 경우 /home/work/datasets/ 제거
+                                    folder_name = base_folder[len('/home/work/datasets/'):]
                                 else:
                                     folder_name = base_folder
                                 
@@ -424,6 +433,9 @@ def collect_resnet_images_from_original_folders(base_folders, subfolder_names, o
                                             folder_name = base_folder[2:]  # ./ 제거
                                         elif base_folder.startswith('.'):
                                             folder_name = base_folder[1:]  # . 제거
+                                        elif base_folder.startswith('/home/work/datasets/'):
+                                            # 절대경로인 경우 /home/work/datasets/ 제거
+                                            folder_name = base_folder[len('/home/work/datasets/'):]
                                         else:
                                             folder_name = base_folder
                                         
