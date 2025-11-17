@@ -5,7 +5,7 @@
     python sealing_split.py \
         --folders 0616 0721 0728 0729 0731 0801 0804 0805 0806 \
         --subfolders frontdoor \
-        --name t
+        --name frontdoor
 
     # 결과: 
     # YOLO용: TXT/train_frontdoor.txt, TXT/val_frontdoor.txt, TXT/test_frontdoor.txt
