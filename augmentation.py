@@ -5,15 +5,12 @@
 
 사용법:
     python augmentation.py 1103 \
-    --subfolder frontfender
+    --subfolder hood
 
     # 날짜 구간으로 선택 (예: 0715부터 0805까지, 해당 범위 폴더 자동 선택)
-    python augmentation.py --date-range 0718 0806 \
+    python augmentation.py --date-range 0718 1103 \
     --subfolder frontfender hood trunklid
 
-    # OBB 모드: 라벨을 6개 값 형식(class x y w h angle)으로 변환
-    python augmentation.py --date-range 0718 0806 \
-    --subfolder frontfender hood trunklid --obb
 
 
 target_dir/
@@ -193,7 +190,24 @@ def invert_colors(image):
     """색상 반전"""
     return ImageOps.invert(image.convert('RGB'))
 
-def augment_image(image_path, label_path, output_dir, category, obb_mode=False):
+def detect_label_format(label_lines):
+    """라벨 형식 자동 감지: OBB(6개 값) 또는 BB(5개 값)"""
+    has_obb = False
+    has_bb = False
+    for line in label_lines:
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split()
+        if len(parts) == 6:
+            has_obb = True
+        elif len(parts) == 5:
+            has_bb = True
+    # OBB가 하나라도 있으면 OBB 형식으로 간주
+    return 'obb' if has_obb else 'bb'
+
+
+def augment_image(image_path, label_path, output_dir, category):
     """단일 이미지에 대해 모든 증강 적용
     
     Args:
@@ -201,7 +215,6 @@ def augment_image(image_path, label_path, output_dir, category, obb_mode=False):
         label_path: 원본 라벨 경로
         output_dir: 출력 디렉토리
         category: 카테고리 (good/bad)
-        obb_mode: OBB 모드 여부 (True면 6개 값 형식으로 변환)
     """
     # 원본 이미지 로드
     try:
@@ -216,9 +229,8 @@ def augment_image(image_path, label_path, output_dir, category, obb_mode=False):
     # 라벨 로드
     label_lines = load_yolo_labels_raw(label_path)
     
-    # OBB 모드일 경우 라벨을 OBB 형식으로 변환
-    if obb_mode:
-        label_lines = convert_to_obb_format(label_lines)
+    # 라벨 형식 자동 감지 (OBB 또는 BB)
+    label_format = detect_label_format(label_lines)
     
     # 파일명에서 확장자 제거
     base_name = Path(image_path).stem
@@ -234,38 +246,34 @@ def augment_image(image_path, label_path, output_dir, category, obb_mode=False):
     save_yolo_labels_raw(f"{output_dir}/{category}/labels/{base_name}_invert.txt", label_lines)
     
     # 3. 좌우 반전 - x 좌표만 변환
-    # OBB 모드일 경우 라벨을 OBB 형식으로 변환한 후 flip 처리
-    if obb_mode:
-        # OBB 형식으로 변환된 라벨을 flip용으로 로드
-        labels_for_flip = []
-        for line in label_lines:
-            line = line.strip()
-            if not line:
-                continue
-            parts = line.split()
-            if len(parts) >= 5:
-                class_id = int(parts[0])
-                x_center = float(parts[1])
-                y_center = float(parts[2])
-                width = float(parts[3])
-                height = float(parts[4])
-                extra = parts[5:] if len(parts) > 5 else []
-                labels_for_flip.append([class_id, x_center, y_center, width, height, extra])
-    else:
-        labels_for_flip = load_yolo_labels_for_flip(label_path)
+    # 라벨 형식에 따라 flip 처리 (OBB면 각도 보정, BB면 각도 보정 없음)
+    labels_for_flip = []
+    for line in label_lines:
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split()
+        if len(parts) >= 5:
+            class_id = int(parts[0])
+            x_center = float(parts[1])
+            y_center = float(parts[2])
+            width = float(parts[3])
+            height = float(parts[4])
+            # OBB 형식이면 extra(각도) 포함, BB 형식이면 빈 리스트
+            extra = parts[5:] if len(parts) > 5 else []
+            labels_for_flip.append([class_id, x_center, y_center, width, height, extra])
     
     flipped_img, flipped_labels = flip_horizontal_and_bbox(image, labels_for_flip)
     flipped_img.save(f"{output_dir}/{category}/images/{base_name}_flip.jpg", 'JPEG')
     save_yolo_labels_for_flip(f"{output_dir}/{category}/labels/{base_name}_flip.txt", flipped_labels)
 
-def process_category(input_dir, output_dir, category, obb_mode=False):
+def process_category(input_dir, output_dir, category):
     """특정 카테고리(good/bad)의 모든 이미지 처리
     
     Args:
         input_dir: 입력 디렉토리
         output_dir: 출력 디렉토리
         category: 카테고리 (good/bad)
-        obb_mode: OBB 모드 여부
     """
     images_dir = f"{input_dir}/{category}/images"
     labels_dir = f"{input_dir}/{category}/labels"
@@ -283,8 +291,6 @@ def process_category(input_dir, output_dir, category, obb_mode=False):
         return
     
     print(f"Processing {len(image_files)} images in {category} category...")
-    if obb_mode:
-        print(f"  OBB 모드: 라벨을 6개 값 형식으로 변환합니다.")
     
     for i, image_file in enumerate(image_files, 1):
         image_path = os.path.join(images_dir, image_file)
@@ -294,7 +300,7 @@ def process_category(input_dir, output_dir, category, obb_mode=False):
         print(f"[{i}/{len(image_files)}] Processing {image_file}")
         
         try:
-            augment_image(image_path, label_path, output_dir, category, obb_mode)
+            augment_image(image_path, label_path, output_dir, category)
         except Exception as e:
             print(f"Error processing {image_file}: {str(e)}")
 
@@ -330,7 +336,6 @@ def main():
     parser.add_argument('--date-range', nargs=2, metavar=('START', 'END'),
                         help='날짜 구간 선택 (MMDD 또는 YYYYMMDD). 예: --date-range 0715 0805')
     parser.add_argument('--subfolder', nargs='+', help='Specific subfolders to process (e.g., frontdoor hood)')
-    parser.add_argument('--obb', action='store_true', help='OBB 모드: 라벨을 6개 값 형식(class x y w h angle)으로 변환')
     
     args = parser.parse_args()
     
@@ -357,8 +362,7 @@ def main():
         print(f"Target subfolders: {', '.join(target_subfolders)}")
     else:
         print("Processing all subfolders with good/bad structure")
-    if args.obb:
-        print("OBB 모드: 라벨을 6개 값 형식(class x y w h angle)으로 변환합니다.")
+    print("라벨 형식 자동 감지: 원본이 OBB 형식(6개 값)이면 OBB로, BB 형식(5개 값)이면 BB로 처리합니다.")
     
     # 모든 폴더에 대해 처리
     total_processed_folders = 0
@@ -427,7 +431,7 @@ def main():
                 category_path = os.path.join(subfolder_path, category)
                 if os.path.exists(category_path):
                     print(f"\n=== Processing {category} category in {subfolder} ===")
-                    process_category(subfolder_path, output_dir, category, args.obb)
+                    process_category(subfolder_path, output_dir, category)
                     categories_processed += 1
             
             if categories_processed > 0:
