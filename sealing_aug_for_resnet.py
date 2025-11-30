@@ -149,14 +149,15 @@ def increase_contrast(img, factor=1.5):
     img = np.clip(img, 0, 255).astype(np.uint8)
     return img
 
+def invert_color(img):
+    """색상 반전 (Invert)"""
+    return cv2.bitwise_not(img)
+
 # 증강 기법과 파일명 접미사 매핑
 audict = {
-    'rot': small_rotation,
     'flip': horizontal_flip,
     'noise': add_noise,
-    'gray': to_grayscale,
-    'bright': increase_brightness,
-    'contrast': increase_contrast
+    'invert': invert_color
 }
 
 # bad/good, crop_* 폴더 순회

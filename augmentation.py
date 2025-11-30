@@ -8,8 +8,8 @@
     --subfolder hood
 
     # 날짜 구간으로 선택 (예: 0715부터 0805까지, 해당 범위 폴더 자동 선택)
-    python augmentation.py --date-range 0718 1103 \
-    --subfolder frontfender hood trunklid
+    python augmentation.py --date-range 0922 1103 \
+    --subfolder trunklid
 
 
 
