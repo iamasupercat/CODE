@@ -26,9 +26,9 @@ YOLO 훈련/검증/테스트 split만 생성하는 스크립트
 사용법:
     # 일반 폴더만
     python YOLOsplit.py \
-          --folders 0718 0721 \
-          --subfolders frontfender hood trunklid \
-          --name bolt_obb
+        --folders 0718 0721 \
+        --subfolders frontfender hood trunklid \
+        --name bolt_obb
 
     # 일반 폴더 + OBB 폴더 (별도 날짜 범위)
     python YOLOsplit.py \
@@ -43,6 +43,21 @@ YOLO 훈련/검증/테스트 split만 생성하는 스크립트
         --obb-folders 0718 \
         --subfolders frontfender hood trunklid \
         --name Bolt
+
+    # Door 예시 (일반 + OBB)
+    python YOLOsplit.py \
+        --date-range 0807 1103 \
+        --obb-folders 0616 0721 \
+        --subfolders frontdoor \
+        --name Door
+
+    # bad / good 날짜 범위를 따로 지정 (예: bolt OBB)
+    python YOLOsplit.py \
+        --bad-date-range 0807 1016 \
+        --good-date-range 0807 1109 \
+        --obb-date-range 0616 0806 \
+        --subfolders frontdoor \
+        --name Door
 
 결과:
     TXT/train_bolt_obb.txt
@@ -69,9 +84,13 @@ def extract_image_id(img_name: str) -> str:
     img_name_clean = img_name
 
     for suffix in aug_suffixes:
-        if img_name_clean.endswith(suffix + '.jpg') or img_name_clean.endswith(suffix + '.png'):
-            img_name_clean = img_name_clean[:-len(suffix)] + ('.jpg' if img_name_clean.endswith('.jpg') else '.png')
-            break
+        # 예: xxx_flip.jpg, xxx_noise.png 에서 "_flip", "_noise" 부분만 제거
+        for ext in ('.jpg', '.png'):
+            full_suffix = suffix + ext  # "_flip.jpg"
+            if img_name_clean.endswith(full_suffix):
+                # 뒤에서 full_suffix 전체를 제거하고, 원래 확장자를 다시 붙임
+                img_name_clean = img_name_clean[:-len(full_suffix)] + ext
+                break
 
     parts = img_name_clean.split('_')
     for i, part in enumerate(parts):
@@ -82,7 +101,7 @@ def extract_image_id(img_name: str) -> str:
     return os.path.splitext(img_name_clean)[0]
 
 
-def collect_yolo_images_from_folders(base_folders, subfolder_names, is_obb=False):
+def collect_yolo_images_from_folders(base_folders, subfolder_names, is_obb=False, quality_filter=None):
     """YOLO 훈련용 원본/증강 이미지들을 수집
     
     Args:
@@ -109,7 +128,8 @@ def collect_yolo_images_from_folders(base_folders, subfolder_names, is_obb=False
 
             print(f"  하위폴더: {subfolder_name}")
 
-            for quality in ['bad', 'good']:
+            qualities = ['bad', 'good'] if quality_filter is None else [quality_filter]
+            for quality in qualities:
                 quality_path = os.path.join(subfolder_path, quality)
                 if not os.path.isdir(quality_path):
                     print(f"    {quality} 폴더가 존재하지 않습니다")
@@ -144,29 +164,28 @@ def collect_yolo_images_from_folders(base_folders, subfolder_names, is_obb=False
                     }
                     all_images.append(img_info)
 
-                # 증강 이미지 (OBB 폴더는 증강 이미지 처리 안 함)
-                if not is_obb:
-                    aug_subfolder_path = os.path.join(base_folder, f"{subfolder_name}_aug", quality, 'images')
-                    if os.path.isdir(aug_subfolder_path):
-                        aug_img_files = glob.glob(os.path.join(aug_subfolder_path, '*'))
-                        aug_img_files = [f for f in aug_img_files if os.path.splitext(f)[1].lower() in IMG_EXTS]
-                        print(f"    {quality} 증강 이미지: {len(aug_img_files)}개")
+                # 증강 이미지 (일반 / OBB 공통으로 처리)
+                aug_subfolder_path = os.path.join(base_folder, f"{subfolder_name}_aug", quality, 'images')
+                if os.path.isdir(aug_subfolder_path):
+                    aug_img_files = glob.glob(os.path.join(aug_subfolder_path, '*'))
+                    aug_img_files = [f for f in aug_img_files if os.path.splitext(f)[1].lower() in IMG_EXTS]
+                    print(f"    {quality} 증강 이미지: {len(aug_img_files)}개")
 
-                        for img_file in aug_img_files:
-                            img_name = os.path.basename(img_file)
-                            folder_name = os.path.basename(base_folder.rstrip(os.sep))
-                            absolute_path = os.path.abspath(img_file)
-                            image_id = extract_image_id(img_name)
-                            img_info = {
-                                'path': absolute_path,
-                                'subfolder': subfolder_name,
-                                'quality': quality,
-                                'base_folder': folder_name,
-                                'img_name': img_name,
-                                'image_id': image_id,
-                                'is_augmented': True
-                            }
-                            all_images.append(img_info)
+                    for img_file in aug_img_files:
+                        img_name = os.path.basename(img_file)
+                        folder_name = os.path.basename(base_folder.rstrip(os.sep))
+                        absolute_path = os.path.abspath(img_file)
+                        image_id = extract_image_id(img_name)
+                        img_info = {
+                            'path': absolute_path,
+                            'subfolder': subfolder_name,
+                            'quality': quality,
+                            'base_folder': folder_name,
+                            'img_name': img_name,
+                            'image_id': image_id,
+                            'is_augmented': True
+                        }
+                        all_images.append(img_info)
 
     return all_images
 
@@ -326,19 +345,23 @@ def main():
                         help='찾을 하위폴더들 (여러 개 가능, 일반 폴더와 OBB 폴더 공유)')
     parser.add_argument('--name', type=str, default='',
                         help='출력 파일명에 사용할 이름 접미사')
+    parser.add_argument('--bad-date-range', nargs=2, metavar=('START', 'END'),
+                        help='bad용 일반 폴더 날짜 구간 (MMDD 또는 YYYYMMDD)')
+    parser.add_argument('--good-date-range', nargs=2, metavar=('START', 'END'),
+                        help='good용 일반 폴더 날짜 구간 (MMDD 또는 YYYYMMDD)')
     args = parser.parse_args()
 
     base_path = "/home/work/datasets"
     
-    # 일반 폴더 처리
+    # 일반 폴더 처리 (기본 범위)
     if args.date_range:
         start, end = args.date_range
-        target_folders = collect_date_range_folders(base_path, start, end)
-        print(f"일반 폴더 날짜 구간: {start} ~ {end}")
+        base_folders = collect_date_range_folders(base_path, start, end)
+        print(f"일반 폴더 기본 날짜 구간: {start} ~ {end}")
     elif args.folders:
-        target_folders = [os.path.join(base_path, date) for date in args.folders]
+        base_folders = [os.path.join(base_path, date) for date in args.folders]
     else:
-        target_folders = []
+        base_folders = []
 
     # OBB 폴더 처리
     obb_base_path = os.path.join(base_path, "OBB")
@@ -350,29 +373,60 @@ def main():
     elif args.obb_folders:
         obb_folders = [os.path.join(obb_base_path, date) for date in args.obb_folders]
 
-    display_dates = [os.path.basename(p) for p in target_folders]
+    display_dates = [os.path.basename(p) for p in base_folders]
     obb_display_dates = [os.path.basename(p) for p in obb_folders]
     
     print(f"\n=== 폴더 정보 ===")
-    if target_folders:
+    if base_folders:
         print(f"일반 폴더들: {display_dates}")
     if obb_folders:
         print(f"OBB 폴더들: {obb_display_dates}")
     print(f"찾을 하위폴더들: {args.subfolders}")
     print(f"출력 파일 이름 접미사: {args.name if args.name else '(기본)'}")
 
-    # 일반 폴더 이미지 수집
+    # bad / good 별 일반 폴더 범위 설정
+    bad_base_dirs = list(base_folders)
+    good_base_dirs = list(base_folders)
+
+    # bad 전용 범위
+    if args.bad_date_range:
+        b_start, b_end = args.bad_date_range
+        bad_base_dirs = collect_date_range_folders(base_path, b_start, b_end)
+        print(f"bad용 일반 폴더 날짜 구간: {b_start} ~ {b_end}")
+
+    # good 전용 범위
+    if args.good_date_range:
+        g_start, g_end = args.good_date_range
+        good_base_dirs = collect_date_range_folders(base_path, g_start, g_end)
+        print(f"good용 일반 폴더 날짜 구간: {g_start} ~ {g_end}")
+
+    # OBB 폴더는 두 품질 모두 공통으로 사용
+    bad_normal_dirs = bad_base_dirs
+    good_normal_dirs = good_base_dirs
+    bad_obb_dirs = obb_folders
+    good_obb_dirs = obb_folders
+
     all_yolo_images = []
-    if target_folders:
-        yolo_images = collect_yolo_images_from_folders(target_folders, args.subfolders, is_obb=False)
-        all_yolo_images.extend(yolo_images)
-        print(f"\n일반 폴더에서 {len(yolo_images)}개 이미지 수집 완료")
-    
-    # OBB 폴더 이미지 수집
-    if obb_folders:
-        obb_images = collect_yolo_images_from_folders(obb_folders, args.subfolders, is_obb=True)
-        all_yolo_images.extend(obb_images)
-        print(f"OBB 폴더에서 {len(obb_images)}개 이미지 수집 완료")
+
+    # bad 이미지 수집
+    if bad_normal_dirs:
+        bad_imgs = collect_yolo_images_from_folders(bad_normal_dirs, args.subfolders, is_obb=False, quality_filter='bad')
+        all_yolo_images.extend(bad_imgs)
+        print(f"\n일반 폴더(bad)에서 {len(bad_imgs)}개 이미지 수집 완료")
+    if bad_obb_dirs:
+        bad_obb_imgs = collect_yolo_images_from_folders(bad_obb_dirs, args.subfolders, is_obb=True, quality_filter='bad')
+        all_yolo_images.extend(bad_obb_imgs)
+        print(f"OBB 폴더(bad)에서 {len(bad_obb_imgs)}개 이미지 수집 완료")
+
+    # good 이미지 수집
+    if good_normal_dirs:
+        good_imgs = collect_yolo_images_from_folders(good_normal_dirs, args.subfolders, is_obb=False, quality_filter='good')
+        all_yolo_images.extend(good_imgs)
+        print(f"일반 폴더(good)에서 {len(good_imgs)}개 이미지 수집 완료")
+    if good_obb_dirs:
+        good_obb_imgs = collect_yolo_images_from_folders(good_obb_dirs, args.subfolders, is_obb=True, quality_filter='good')
+        all_yolo_images.extend(good_obb_imgs)
+        print(f"OBB 폴더(good)에서 {len(good_obb_imgs)}개 이미지 수집 완료")
 
     if not all_yolo_images:
         print("\n수집된 YOLO용 이미지가 없습니다.")

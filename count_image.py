@@ -4,10 +4,10 @@
 '''
 특정 기간의 데이터 개수를 세는 스크립트
 
-단일 날짜, 단일 부위: python count.py 0718 hood
-단일 날짜, 여러 부위: python count.py 0718 hood trunklid frontfender
-기간별, 단일 부위: python count.py 0718 0725 hood
-기간별, 여러 부위: python count.py 0718 0725 hood trunklid frontfender
+단일 날짜, 단일 부위: python count_image.py 0718 hood
+단일 날짜, 여러 부위: python count_image.py 0718 hood trunklid frontfender
+기간별, 단일 부위: python count_image.py 0807 1016 frontdoor
+기간별, 여러 부위: python count_image.py 0718 0725 hood trunklid frontfender
 
 '''
 
