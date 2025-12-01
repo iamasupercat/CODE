@@ -9,7 +9,7 @@ YOLO OBB(Oriented Bounding Box) 라벨을 이용하여 회전된 객체를 crop�
   실행 시 지정된 폴더 내의 기존 결과물(crop_*, debug_crop) 삭제
 
 사용법:
-    python OBBcrop.py --target_dir 0805 --mode door --clean
+    python CropforOBB.py --target_dir 0805 --mode door --clean
 """
 
 import os

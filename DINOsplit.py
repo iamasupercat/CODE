@@ -1,0 +1,629 @@
+#!/usr/bin/env python3
+"""
+DINO 훈련용 split을 생성하는 스크립트
+ResNet txt 형식과 동일하게 경로와 라벨을 저장합니다.
+
+모드:
+1. Bolt 모드 (--mode bolt):
+   - 기본: 0(good), 1(bad)
+   - --bolt-4class: 0(정측면 양품), 1(정측면 불량), 2(측면 양품), 3(측면 불량)
+   
+2. Door 모드 (--mode door):
+   - 기본: 0(출고실링), 1(실링없음), 2(작업실링), 3(테이프실링)
+   - --merge-classes: 1,2,3을 1로 합침 (0은 그대로)
+   - --separate-classes: 1,2,3을 각각 유지 (기본값)
+
+Bolt 폴더 구조:
+    target_dir/
+    ├── subfolder/
+    │   ├── bad/
+    │   │   ├── crop_bolt/        
+    │   │   │  ├──0/       # 정측면
+    │   │   │  └──1/       # 측면
+    │   │   └── crop_bolt_aug/        
+    │   └── good/
+    │       ├── crop_bolt/        
+    │       │  ├──0/       # 정측면
+    │       │  └──1/       # 측면
+    │       └── crop_bolt_aug/        
+
+Door 폴더 구조:
+    target_dir/
+    ├── subfolder/
+    │   ├── bad/
+    │   │   ├── crop_high/        
+    │   │   │  ├──0/       # 출고실링
+    │   │   │  ├──1/       # 실링없음
+    │   │   │  ├──2/       # 작업실링
+    │   │   │  └──3/       # 테이프실링
+    │   │   ├── crop_mid/        
+    │   │   ├── crop_low/        
+    │   │   └── crop_*_aug/        
+    │   └── good/
+    │       └── (동일 구조)
+
+사용법:
+    # Bolt 모드 (기본 2클래스):
+    python dino_split.py \
+        --mode bolt \
+        --folders 0616 0718 0721 \
+        --subfolders frontfender hood trunklid \
+        --name bolt
+
+    # Bolt 모드 (4클래스):
+    python dino_split.py \
+        --mode bolt \
+        --bolt-4class \
+        --folders 0616 0718 0721 \
+        --subfolders frontfender hood trunklid \
+        --name bolt_4class
+
+    # Door 모드 (기본, 클래스 분리):
+    python dino_split.py \
+        --mode door \
+        --folders 0616 0721 0728 \
+        --subfolders frontdoor \
+        --name door
+
+    # Door 모드 (클래스 병합):
+    python dino_split.py \
+        --mode door \
+        --merge-classes \
+        --folders 0616 0721 0728 \
+        --subfolders frontdoor \
+        --name door_merged
+
+    # 결과: 
+    # TXT/train_dino_{name}.txt, TXT/val_dino_{name}.txt, TXT/test_dino_{name}.txt
+    # 형식: 경로 라벨 (예: /path/to/image.jpg 0)
+"""
+
+import os
+import random
+import argparse
+import glob
+from pathlib import Path
+from collections import defaultdict
+import re
+
+random.seed(42)
+
+SPLIT_RATIO = [0.7, 0.1, 0.2]  # train, val, test
+
+IMG_EXTS = {'.jpg', '.jpeg', '.png', '.bmp'}
+
+def collect_date_range_folders(base_path: str, start: str, end: str):
+    """
+    base_path 아래 날짜 폴더 중 start~end 범위(포함)의 절대경로 리스트 반환.
+    - 지원 포맷: 4자리(MMDD) 또는 8자리(YYYYMMDD)
+    - 입력 길이에 맞는 폴더만 비교 대상으로 포함
+    """
+    if not (start.isdigit() and end.isdigit()):
+        raise ValueError("date-range는 숫자만 가능합니다. 예: 0715 0805 또는 20240715 20240805")
+    if len(start) != len(end) or len(start) not in (4, 8):
+        raise ValueError("date-range는 4자리(MMDD) 또는 8자리(YYYYMMDD)로 동일 길이여야 합니다.")
+
+    s_val, e_val = int(start), int(end)
+    if s_val > e_val:
+        s_val, e_val = e_val, s_val
+
+    found = []
+    try:
+        for name in os.listdir(base_path):
+            full = os.path.join(base_path, name)
+            if not os.path.isdir(full):
+                continue
+            if not (name.isdigit() and len(name) == len(start)):
+                continue
+            val = int(name)
+            if s_val <= val <= e_val:
+                found.append(os.path.abspath(full))
+    except FileNotFoundError:
+        print(f"기본 경로가 존재하지 않습니다: {base_path}")
+        return []
+
+    found.sort(key=lambda p: int(os.path.basename(p)))
+    return found
+
+def extract_image_id_bolt(img_name: str) -> str:
+    """Bolt 모드: 이미지명에서 UUID까지 포함한 고유 ID 추출"""
+    aug_suffixes = ['_invert', '_blur', '_bright', '_contrast', '_flip', '_gray', '_noise', '_rot']
+    img_name_clean = img_name
+    
+    for suffix in aug_suffixes:
+        if img_name_clean.endswith(suffix + '.jpg') or img_name_clean.endswith(suffix + '.png'):
+            img_name_clean = img_name_clean[:-len(suffix)] + ('.jpg' if img_name_clean.endswith('.jpg') else '.png')
+            break
+    
+    parts = img_name_clean.split('_')
+    for i, part in enumerate(parts):
+        if len(part) == 8 and i + 4 < len(parts):
+            if (len(parts[i+1]) == 4 and len(parts[i+2]) == 4 and 
+                len(parts[i+3]) == 4 and len(parts[i+4]) == 12):
+                return '_'.join(parts[:i+5])
+    return os.path.splitext(img_name_clean)[0]
+
+def extract_image_id_door(img_name: str) -> str:
+    """Door 모드: 이미지명에서 원본 이미지 파일명 추출"""
+    img_name_without_ext = os.path.splitext(img_name)[0]
+    crop_aug_types = ['bright', 'contrast', 'flip', 'gray', 'noise', 'rot']
+    
+    # 크롭 증강 이미지: 원본파일명_라벨링번호_증강기법
+    if '_' in img_name_without_ext:
+        parts = img_name_without_ext.split('_')
+        if len(parts) >= 3 and parts[-1] in crop_aug_types and parts[-2].isdigit():
+            return '_'.join(parts[:-2])
+    
+    # 크롭 이미지: 원본파일명_라벨링번호 (0, 1, 2)
+    if '_' in img_name_without_ext:
+        parts = img_name_without_ext.split('_')
+        if len(parts) >= 2 and parts[-1] in ['0', '1', '2']:
+            return '_'.join(parts[:-1])
+    
+    return img_name_without_ext
+
+def collect_original_folders(base_folders, subfolder_names):
+    """원본 폴더명들을 수집하는 함수 (Door 모드용)"""
+    original_folders = set()
+    
+    for base_folder in base_folders:
+        if not os.path.isdir(base_folder):
+            print(f"기본 폴더가 존재하지 않습니다: {base_folder}")
+            continue
+            
+        for subfolder_name in subfolder_names:
+            subfolder_path = os.path.join(base_folder, subfolder_name)
+            
+            if not os.path.isdir(subfolder_path):
+                continue
+            
+            for quality in ['bad', 'good']:
+                quality_path = os.path.join(subfolder_path, quality)
+                
+                if not os.path.isdir(quality_path):
+                    continue
+                
+                images_path = os.path.join(quality_path, 'images')
+                
+                if not os.path.isdir(images_path):
+                    continue
+                
+                img_files = glob.glob(os.path.join(images_path, '*'))
+                img_files = [f for f in img_files if os.path.splitext(f)[1].lower() in IMG_EXTS]
+                
+                for img_file in img_files:
+                    img_name = os.path.basename(img_file)
+                    original_name_without_ext = os.path.splitext(img_name)[0]
+                    original_folders.add(original_name_without_ext)
+    
+    return original_folders
+
+def collect_bolt_images(base_folders, subfolder_names, use_4class=False):
+    """Bolt 모드: 크롭된 이미지들을 수집하는 함수"""
+    all_images = []
+    
+    for base_folder in base_folders:
+        if not os.path.isdir(base_folder):
+            print(f"기본 폴더가 존재하지 않습니다: {base_folder}")
+            continue
+            
+        print(f"\n=== {base_folder}에서 Bolt 이미지 수집 ===")
+        
+        for subfolder_name in subfolder_names:
+            subfolder_path = os.path.join(base_folder, subfolder_name)
+            
+            if not os.path.isdir(subfolder_path):
+                print(f"  하위폴더가 존재하지 않습니다: {subfolder_name}")
+                continue
+                
+            print(f"  하위폴더: {subfolder_name}")
+            
+            for quality in ['bad', 'good']:
+                quality_path = os.path.join(subfolder_path, quality)
+                
+                if not os.path.isdir(quality_path):
+                    print(f"    {quality} 폴더가 존재하지 않습니다")
+                    continue
+                
+                crop_folders = ['crop_bolt', 'crop_bolt_aug']
+                
+                for crop_folder in crop_folders:
+                    crop_path = os.path.join(quality_path, crop_folder)
+                    
+                    if not os.path.isdir(crop_path):
+                        print(f"    {quality}/{crop_folder} 폴더가 존재하지 않습니다")
+                        continue
+                    
+                    for subdir in ['0', '1']:
+                        subdir_path = os.path.join(crop_path, subdir)
+                        
+                        if not os.path.isdir(subdir_path):
+                            print(f"    {quality}/{crop_folder}/{subdir} 폴더가 존재하지 않습니다")
+                            continue
+                        
+                        img_files = glob.glob(os.path.join(subdir_path, '*'))
+                        img_files = [f for f in img_files if os.path.splitext(f)[1].lower() in IMG_EXTS]
+                        
+                        if not img_files:
+                            print(f"    {quality}/{crop_folder}/{subdir} 폴더에 이미지 파일이 없습니다")
+                            continue
+                        
+                        print(f"    {quality}/{crop_folder}/{subdir}: {len(img_files)}개 이미지 발견")
+                        
+                        for img_file in img_files:
+                            img_name = os.path.basename(img_file)
+                            folder_name = os.path.basename(base_folder.rstrip(os.sep))
+                            absolute_path = os.path.abspath(img_file)
+                            
+                            # 라벨 결정
+                            if use_4class:
+                                # 0: 정측면 양품, 1: 정측면 불량, 2: 측면 양품, 3: 측면 불량
+                                if quality == 'good' and subdir == '0':
+                                    label = 0  # 정측면 양품
+                                elif quality == 'bad' and subdir == '0':
+                                    label = 1  # 정측면 불량
+                                elif quality == 'good' and subdir == '1':
+                                    label = 2  # 측면 양품
+                                else:  # quality == 'bad' and subdir == '1'
+                                    label = 3  # 측면 불량
+                            else:
+                                # 기본: 0(good), 1(bad)
+                                label = 1 if quality == 'bad' else 0
+                            
+                            # 원본 이미지 ID 추출
+                            uuid_pattern = r'([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})'
+                            match = re.search(uuid_pattern, img_name)
+                            
+                            if match:
+                                uuid_end = match.end()
+                                img_name_no_suffix = img_name[:uuid_end] + ('.jpg' if img_name.endswith('.jpg') else '.png')
+                                original_image_id = extract_image_id_bolt(img_name_no_suffix)
+                            else:
+                                original_image_id = extract_image_id_bolt(img_name)
+                            
+                            img_info = {
+                                'path': absolute_path,
+                                'subfolder': subfolder_name,
+                                'quality': quality,
+                                'crop_folder': f"{crop_folder}/{subdir}",
+                                'label': label,
+                                'is_augmented': '_aug' in crop_folder,
+                                'original_image_id': original_image_id,
+                                'base_folder': folder_name,
+                                'image_id': extract_image_id_bolt(img_name)
+                            }
+                            all_images.append(img_info)
+    
+    return all_images
+
+def collect_door_images(base_folders, subfolder_names, original_folders, merge_classes=False):
+    """Door 모드: 크롭된 이미지들을 수집하는 함수"""
+    all_images = []
+    
+    for base_folder in base_folders:
+        if not os.path.isdir(base_folder):
+            print(f"기본 폴더가 존재하지 않습니다: {base_folder}")
+            continue
+            
+        print(f"\n=== {base_folder}에서 Door 이미지 수집 ===")
+        
+        for subfolder_name in subfolder_names:
+            subfolder_path = os.path.join(base_folder, subfolder_name)
+            
+            if not os.path.isdir(subfolder_path):
+                print(f"  하위폴더가 존재하지 않습니다: {subfolder_name}")
+                continue
+                
+            print(f"  하위폴더: {subfolder_name}")
+            
+            for quality in ['bad', 'good']:
+                quality_path = os.path.join(subfolder_path, quality)
+                
+                if not os.path.isdir(quality_path):
+                    print(f"    {quality} 폴더가 존재하지 않습니다")
+                    continue
+                
+                crop_areas = ['crop_high', 'crop_mid', 'crop_low']
+                crop_folders = []
+                for area in crop_areas:
+                    crop_folders.append(area)
+                    crop_folders.append(area + '_aug')
+                
+                for crop_folder in crop_folders:
+                    crop_path = os.path.join(quality_path, crop_folder)
+                    
+                    if not os.path.isdir(crop_path):
+                        print(f"    {quality}/{crop_folder} 폴더가 존재하지 않습니다")
+                        continue
+                    
+                    area_labels = {'crop_high': '0', 'crop_mid': '1', 'crop_low': '2'}
+                    area_label = area_labels.get(crop_folder.replace('_aug', ''), None)
+                    
+                    for subdir in ['0', '1', '2', '3']:
+                        subdir_path = os.path.join(crop_path, subdir)
+                        
+                        if not os.path.isdir(subdir_path):
+                            print(f"    {quality}/{crop_folder}/{subdir} 폴더가 존재하지 않습니다")
+                            continue
+                        
+                        crop_count = 0
+                        for original_name_without_ext in original_folders:
+                            # 일반 크롭 이미지
+                            crop_filename = f"{original_name_without_ext}_{area_label}.jpg"
+                            crop_file_path = os.path.join(subdir_path, crop_filename)
+                            
+                            if os.path.exists(crop_file_path):
+                                if base_folder.startswith('/home/work/datasets/'):
+                                    folder_name = base_folder[len('/home/work/datasets/'):]
+                                else:
+                                    folder_name = os.path.basename(base_folder.rstrip(os.sep))
+                                
+                                absolute_path = f"/home/work/datasets/{folder_name}/{subfolder_name}/{quality}/{crop_folder}/{subdir}/{crop_filename}"
+                                
+                                # 라벨 결정
+                                original_label = int(subdir)  # 0, 1, 2, 3
+                                if merge_classes and original_label in [1, 2, 3]:
+                                    label = 1  # 1,2,3을 1로 합침
+                                else:
+                                    label = original_label  # 그대로 유지
+                                
+                                img_info = {
+                                    'path': absolute_path,
+                                    'subfolder': subfolder_name,
+                                    'quality': quality,
+                                    'crop_folder': f"{crop_folder}/{subdir}",
+                                    'label': label,
+                                    'area_label': area_label,
+                                    'is_augmented': '_aug' in crop_folder,
+                                    'original_img_name': f"{original_name_without_ext}.jpg",
+                                    'original_image_id': original_name_without_ext,
+                                    'base_folder': folder_name,
+                                    'image_id': extract_image_id_door(crop_filename)
+                                }
+                                all_images.append(img_info)
+                                crop_count += 1
+                        
+                        # 크롭 증강 이미지
+                        if '_aug' in crop_folder:
+                            crop_aug_types = ['bright', 'contrast', 'flip', 'gray', 'noise', 'rot']
+                            
+                            for original_name_without_ext in original_folders:
+                                for aug_type in crop_aug_types:
+                                    crop_aug_filename = f"{original_name_without_ext}_{area_label}_{aug_type}.jpg"
+                                    crop_aug_file_path = os.path.join(subdir_path, crop_aug_filename)
+                                    
+                                    if os.path.exists(crop_aug_file_path):
+                                        if base_folder.startswith('/home/work/datasets/'):
+                                            folder_name = base_folder[len('/home/work/datasets/'):]
+                                        else:
+                                            folder_name = os.path.basename(base_folder.rstrip(os.sep))
+                                        
+                                        absolute_path = f"/home/work/datasets/{folder_name}/{subfolder_name}/{quality}/{crop_folder}/{subdir}/{crop_aug_filename}"
+                                        
+                                        # 라벨 결정
+                                        original_label = int(subdir)
+                                        if merge_classes and original_label in [1, 2, 3]:
+                                            label = 1
+                                        else:
+                                            label = original_label
+                                        
+                                        img_info = {
+                                            'path': absolute_path,
+                                            'subfolder': subfolder_name,
+                                            'quality': quality,
+                                            'crop_folder': f"{crop_folder}/{subdir}",
+                                            'label': label,
+                                            'area_label': area_label,
+                                            'is_augmented': True,
+                                            'original_img_name': f"{original_name_without_ext}.jpg",
+                                            'original_image_id': original_name_without_ext,
+                                            'base_folder': folder_name,
+                                            'image_id': extract_image_id_door(crop_aug_filename)
+                                        }
+                                        all_images.append(img_info)
+                                        crop_count += 1
+                        
+                        if crop_count > 0:
+                            print(f"    {quality}/{crop_folder}/{subdir}: {crop_count}개 이미지 발견")
+    
+    return all_images
+
+def stratified_split(images, ratios):
+    """이미지를 stratified split하는 함수"""
+    groups = defaultdict(list)
+    for img in images:
+        key = f"{img['base_folder']}/{img['subfolder']}/{img['quality']}"
+        groups[key].append(img)
+    
+    train_images = []
+    val_images = []
+    test_images = []
+    
+    for group_key, group_images in groups.items():
+        quality_groups = defaultdict(list)
+        for img in group_images:
+            quality_groups[img['quality']].append(img)
+        
+        for quality in ['good', 'bad']:
+            if quality in quality_groups:
+                group_imgs = quality_groups[quality]
+                random.shuffle(group_imgs)
+                
+                n_total = len(group_imgs)
+                n_train = int(n_total * ratios[0])
+                n_val = int(n_total * ratios[1])
+                n_test = n_total - n_train - n_val
+                
+                train_images.extend(group_imgs[:n_train])
+                val_images.extend(group_imgs[n_train:n_train+n_val])
+                test_images.extend(group_imgs[n_train+n_val:])
+    
+    random.shuffle(train_images)
+    random.shuffle(val_images)
+    random.shuffle(test_images)
+    
+    return train_images, val_images, test_images
+
+def write_dino_split_files(splits, name=''):
+    """분할된 이미지들을 DINO용 파일에 저장하는 함수"""
+    txt_dir = Path('TXT')
+    txt_dir.mkdir(parents=True, exist_ok=True)
+    
+    if name:
+        train_file = txt_dir / f'train_dino_{name}.txt'
+        val_file = txt_dir / f'val_dino_{name}.txt'
+        test_file = txt_dir / f'test_dino_{name}.txt'
+    else:
+        train_file = txt_dir / 'train_dino.txt'
+        val_file = txt_dir / 'val_dino.txt'
+        test_file = txt_dir / 'test_dino.txt'
+    
+    train_images, val_images, test_images = splits
+    missing_files = []
+    
+    def write_paths_with_label(file_path, imgs):
+        written = 0
+        with open(file_path, 'w') as f:
+            for img in imgs:
+                p = img['path']
+                if os.path.isfile(p):
+                    f.write(f"{p} {img['label']}\n")
+                    written += 1
+                else:
+                    missing_files.append(p)
+        return written
+    
+    train_written = write_paths_with_label(train_file, train_images)
+    val_written = write_paths_with_label(val_file, val_images)
+    test_written = write_paths_with_label(test_file, test_images)
+    
+    if missing_files:
+        miss_file = txt_dir / f'missing_dino_{name if name else "default"}.txt'
+        with open(miss_file, 'w') as mf:
+            for p in missing_files:
+                mf.write(p + '\n')
+    
+    print(f"\n=== DINO 분할 결과 ===")
+    print(f"  train: {len(train_images)}개 (실제 기록: {train_written}) -> {train_file}")
+    print(f"  val: {len(val_images)}개 (실제 기록: {val_written}) -> {val_file}")
+    print(f"  test: {len(test_images)}개 (실제 기록: {test_written}) -> {test_file}")
+
+def main():
+    parser = argparse.ArgumentParser(description='DINO 훈련용 split을 생성합니다.')
+    parser.add_argument('--mode', choices=['bolt', 'door'], required=True,
+                       help='모드 선택: bolt 또는 door')
+    parser.add_argument('--folders', nargs='+', 
+                       help='분석할 기본 폴더 날짜들 (예: 0616 0718 0721)')
+    parser.add_argument('--date-range', nargs=2, metavar=('START', 'END'),
+                       help='날짜 구간 선택 (MMDD). 예: --date-range 0807 1103')
+    parser.add_argument('--subfolders', nargs='+', required=True,
+                       help='찾을 하위폴더들 (여러 개 가능)')
+    parser.add_argument('--name', type=str, default='',
+                       help='출력 파일명에 사용할 이름')
+    
+    # Bolt 모드 옵션
+    parser.add_argument('--bolt-4class', action='store_true',
+                       help='Bolt 모드: 4클래스 사용 (정측면 양품/불량, 측면 양품/불량)')
+    
+    # Door 모드 옵션
+    parser.add_argument('--merge-classes', action='store_true',
+                       help='Door 모드: 클래스 1,2,3을 1로 합침')
+    parser.add_argument('--separate-classes', action='store_true',
+                       help='Door 모드: 클래스 1,2,3을 각각 유지 (기본값)')
+    
+    args = parser.parse_args()
+    
+    base_path = "/home/work/datasets"
+    
+    if args.date_range:
+        start, end = args.date_range
+        target_folders = collect_date_range_folders(base_path, start, end)
+        print(f"날짜 구간: {start} ~ {end}")
+    elif args.folders:
+        target_folders = [os.path.join(base_path, date) for date in args.folders]
+    else:
+        parser.error("--folders 또는 --date-range 중 하나는 반드시 지정해야 합니다.")
+    
+    display_dates = [os.path.basename(p) for p in target_folders]
+    print(f"모드: {args.mode}")
+    print(f"분석할 기본 폴더들: {display_dates}")
+    print(f"찾을 하위폴더들: {args.subfolders}")
+    if args.name:
+        print(f"출력 파일 이름: {args.name}")
+    
+    # 모드별 처리
+    if args.mode == 'bolt':
+        if args.bolt_4class:
+            print("Bolt 모드: 4클래스 사용 (정측면 양품/불량, 측면 양품/불량)")
+        else:
+            print("Bolt 모드: 2클래스 사용 (good/bad)")
+        
+        dino_images = collect_bolt_images(target_folders, args.subfolders, args.bolt_4class)
+        
+    elif args.mode == 'door':
+        merge_classes = args.merge_classes
+        if merge_classes:
+            print("Door 모드: 클래스 1,2,3을 1로 합침")
+        else:
+            print("Door 모드: 클래스 1,2,3을 각각 유지")
+        
+        # 원본 폴더명 수집
+        original_folders = collect_original_folders(target_folders, args.subfolders)
+        print(f"\n총 {len(original_folders)}개 원본 폴더명 수집 완료")
+        
+        if not original_folders:
+            print("수집된 원본 폴더명이 없습니다.")
+            return
+        
+        dino_images = collect_door_images(target_folders, args.subfolders, original_folders, merge_classes)
+    
+    if not dino_images:
+        print("수집된 DINO용 이미지가 없습니다.")
+        return
+    
+    print(f"\n총 {len(dino_images)}개 DINO용 이미지 수집 완료")
+    
+    # 원본과 증강 분리
+    original_images = [img for img in dino_images if not img['is_augmented']]
+    aug_images = [img for img in dino_images if img['is_augmented']]
+    
+    print(f"  - 원본 이미지: {len(original_images)}개")
+    print(f"  - 증강 이미지: {len(aug_images)}개")
+    
+    # 원본 이미지로 split 수행
+    train_original, val_original, test_original = stratified_split(original_images, SPLIT_RATIO)
+    
+    # train에 선택된 원본 이미지의 키 추출
+    train_original_keys = set()
+    for img in train_original:
+        if args.mode == 'bolt':
+            key = f"{img['base_folder']}/{img['subfolder']}/{img['quality']}/{img['original_image_id']}"
+        else:  # door
+            key = f"{img['base_folder']}/{img['subfolder']}/{img['quality']}/{img['original_image_id']}"
+        train_original_keys.add(key)
+    
+    # train에 속한 원본에서 생성된 증강 이미지들을 train에 추가
+    train_aug = []
+    for aug_img in aug_images:
+        if args.mode == 'bolt':
+            key = f"{aug_img['base_folder']}/{aug_img['subfolder']}/{aug_img['quality']}/{aug_img['original_image_id']}"
+        else:  # door
+            key = f"{aug_img['base_folder']}/{aug_img['subfolder']}/{aug_img['quality']}/{aug_img['original_image_id']}"
+        if key in train_original_keys:
+            train_aug.append(aug_img)
+    
+    print(f"\n=== 증강 이미지 매칭 ===")
+    print(f"train에 추가된 증강 이미지: {len(train_aug)}개")
+    
+    # 최종 split 구성
+    train_final = train_original + train_aug
+    val_final = val_original
+    test_final = test_original
+    
+    random.shuffle(train_final)
+    
+    # 파일에 저장
+    write_dino_split_files((train_final, val_final, test_final), args.name)
+
+if __name__ == '__main__':
+    main()
