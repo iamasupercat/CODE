@@ -2,14 +2,21 @@
 원본이미지 증강: 노이즈, 색상반전, 좌우반전
 이미 aug가 있는 경우: 덮어씌우기 (image, txt 모두)
 
+OBB 폴더 지원: /home/work/datasets/OBB/ 아래의 날짜 폴더도 자동으로 검색합니다.
 
 사용법:
     python augmentation.py 1103 \
     --subfolder hood
 
     # 날짜 구간으로 선택 (예: 0715부터 0805까지, 해당 범위 폴더 자동 선택)
-    python augmentation.py --date-range 0922 1103 \
-    --subfolder trunklid
+    # 기본 경로와 OBB 폴더 모두 검색됩니다
+    python augmentation.py --date-range 0616 1109 \
+    --subfolder frontdoor
+
+    # OBB 폴더만 처리 (기본 경로 제외)
+    python augmentation.py --date-range 0616 0718 \
+    --subfolder trunklid hood \
+    --obb-only
 
 
 
@@ -46,11 +53,12 @@ import sys
 import argparse
 import math
 
-def collect_date_range_folders(base_path: str, start: str, end: str):
+def collect_date_range_folders(base_path: str, start: str, end: str, include_obb: bool = True):
     """
     base_path 아래 날짜 폴더 중 start~end 범위(포함)의 절대경로 리스트 반환.
     - 지원 포맷: 4자리(MMDD) 또는 8자리(YYYYMMDD)
     - 입력 길이에 맞는 폴더만 비교 대상으로 포함
+    - include_obb가 True이면 OBB 폴더도 함께 검색
     """
     if not (start.isdigit() and end.isdigit()):
         raise ValueError("date-range는 숫자만 가능합니다. 예: 0715 0805 또는 20240715 20240805")
@@ -62,6 +70,8 @@ def collect_date_range_folders(base_path: str, start: str, end: str):
         s_val, e_val = e_val, s_val
 
     found = []
+    
+    # 기본 경로 검색
     try:
         for name in os.listdir(base_path):
             full = os.path.join(base_path, name)
@@ -74,8 +84,26 @@ def collect_date_range_folders(base_path: str, start: str, end: str):
                 found.append(os.path.abspath(full))
     except FileNotFoundError:
         print(f"기본 경로가 존재하지 않습니다: {base_path}")
-        return []
+    
+    # OBB 폴더도 검색
+    if include_obb:
+        obb_path = os.path.join(base_path, "OBB")
+        try:
+            if os.path.exists(obb_path):
+                for name in os.listdir(obb_path):
+                    full = os.path.join(obb_path, name)
+                    if not os.path.isdir(full):
+                        continue
+                    if not (name.isdigit() and len(name) == len(start)):
+                        continue
+                    val = int(name)
+                    if s_val <= val <= e_val:
+                        found.append(os.path.abspath(full))
+        except FileNotFoundError:
+            pass  # OBB 폴더가 없어도 무시
 
+    # 중복 제거 후 정렬
+    found = list(set(found))
     found.sort(key=lambda p: int(os.path.basename(p)))
     return found
 
@@ -336,6 +364,8 @@ def main():
     parser.add_argument('--date-range', nargs=2, metavar=('START', 'END'),
                         help='날짜 구간 선택 (MMDD 또는 YYYYMMDD). 예: --date-range 0715 0805')
     parser.add_argument('--subfolder', nargs='+', help='Specific subfolders to process (e.g., frontdoor hood)')
+    parser.add_argument('--obb-only', action='store_true', 
+                        help='OBB 폴더만 처리 (기본 경로는 제외하고 /home/work/datasets/OBB/ 아래만 검색)')
     
     args = parser.parse_args()
     
@@ -343,21 +373,62 @@ def main():
     base_path = "/home/work/datasets"
     if args.date_range:
         start, end = args.date_range
-        input_dirs = collect_date_range_folders(base_path, start, end)
+        if args.obb_only:
+            # OBB 폴더만 검색
+            input_dirs = collect_date_range_folders(base_path, start, end, include_obb=True)
+            # 기본 경로 결과 제거 (OBB 경로만 남김)
+            input_dirs = [d for d in input_dirs if "OBB" in d]
+        else:
+            # 기본 경로와 OBB 경로 모두 검색
+            input_dirs = collect_date_range_folders(base_path, start, end, include_obb=True)
         print(f"날짜 구간: {start} ~ {end}")
     else:
-        input_dirs = [os.path.join(base_path, date) for date in args.folders]
+        # 직접 폴더 지정 시
+        input_dirs = []
+        for date in args.folders:
+            if args.obb_only:
+                # OBB 경로만 확인
+                obb_path = os.path.join(base_path, "OBB", date)
+                if os.path.exists(obb_path):
+                    input_dirs.append(os.path.abspath(obb_path))
+            else:
+                # 기본 경로와 OBB 경로 모두 확인
+                default_path = os.path.join(base_path, date)
+                if os.path.exists(default_path):
+                    input_dirs.append(os.path.abspath(default_path))
+                obb_path = os.path.join(base_path, "OBB", date)
+                if os.path.exists(obb_path):
+                    input_dirs.append(os.path.abspath(obb_path))
     target_subfolders = args.subfolder
     
     # 모든 입력 폴더가 존재하는지 확인
+    if not input_dirs:
+        print("Error: No valid folders found.")
+        return
+    
     for input_dir in input_dirs:
         if not os.path.exists(input_dir):
-            print(f"Error: Folder '{input_dir}' not found.")
-            return
+            print(f"Warning: Folder '{input_dir}' not found, skipping...")
+            continue
+    
+    # 존재하는 폴더만 필터링
+    input_dirs = [d for d in input_dirs if os.path.exists(d)]
+    
+    if not input_dirs:
+        print("Error: No valid folders found.")
+        return
     
     display_dates = [os.path.basename(p) for p in input_dirs]
     print(f"Selected input folders: {', '.join(display_dates)}")
     print(f"절대경로: {', '.join(input_dirs)}")
+    
+    # OBB 폴더 포함 여부 표시
+    if args.obb_only:
+        print(f"모드: OBB 폴더만 처리 ({len(input_dirs)}개)")
+    else:
+        obb_folders = [d for d in input_dirs if "OBB" in d]
+        if obb_folders:
+            print(f"OBB 폴더 포함: {len(obb_folders)}개")
     if target_subfolders:
         print(f"Target subfolders: {', '.join(target_subfolders)}")
     else:
