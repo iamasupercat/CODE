@@ -9,7 +9,23 @@ YOLO OBB(Oriented Bounding Box) 라벨을 이용하여 회전된 객체를 crop�
   실행 시 지정된 폴더 내의 기존 결과물(crop_*, debug_crop) 삭제
 
 사용법:
-    python CropforOBB.py --target_dir 0805 --mode door --clean
+    # 단일 날짜 지정
+    python CropforOBB.py \
+        --target_dir 0805 \
+        --mode door \
+        --clean
+
+    # 날짜 범위 지정 (일반 폴더)
+    python CropforOBB.py \
+        --date-range 0807 1103 \
+        --mode door
+
+    # 일반 폴더 + OBB 폴더 (별도 날짜 범위)
+    python CropforOBB.py \
+        --date-range 0807 1109 \
+        --obb-date-range 0616 0806 \
+        --mode door \
+        --clean
 """
 
 import os
@@ -22,6 +38,40 @@ from pathlib import Path
 import math
 import shutil
 import glob
+
+
+def collect_date_range_folders(base_path: str, start: str, end: str):
+    """
+    base_path 아래 날짜 폴더 중 start~end 범위(포함)의 절대경로 리스트 반환.
+    - 지원 포맷: 4자리(MMDD) 또는 8자리(YYYYMMDD)
+    - 입력 길이에 맞는 폴더만 비교 대상으로 포함
+    """
+    if not (start.isdigit() and end.isdigit()):
+        raise ValueError("date-range는 숫자만 가능합니다. 예: 0715 0805 또는 20240715 20240805")
+    if len(start) != len(end) or len(start) not in (4, 8):
+        raise ValueError("date-range는 4자리(MMDD) 또는 8자리(YYYYMMDD)로 동일 길이여야 합니다.")
+
+    s_val, e_val = int(start), int(end)
+    if s_val > e_val:
+        s_val, e_val = e_val, s_val
+
+    found = []
+    try:
+        for name in os.listdir(base_path):
+            full = os.path.join(base_path, name)
+            if not os.path.isdir(full):
+                continue
+            if not (name.isdigit() and len(name) == len(start)):
+                continue
+            val = int(name)
+            if s_val <= val <= e_val:
+                found.append(os.path.abspath(full))
+    except FileNotFoundError:
+        print(f"기본 경로가 존재하지 않습니다: {base_path}")
+        return []
+
+    found.sort(key=lambda p: int(os.path.basename(p)))
+    return found
 
 
 def parse_obb_label(line):
@@ -147,18 +197,38 @@ def load_excel_data(excel_path):
         return None
 
 
-def get_defect_type_from_excel(df, image_filename, vehicle_number):
+def _normalize_image_name(name: str) -> str:
+    """이미지 파일명에서 bad_/good_ 접두어와 확장자를 제거한 기본 이름을 반환"""
+    base = os.path.splitext(name)[0]
+    if base.startswith('bad_'):
+        base = base[len('bad_'):]
+    elif base.startswith('good_'):
+        base = base[len('good_'):]
+    return base
+
+
+def get_defect_type_from_excel(df, image_filename):
+    """
+    엑셀에서 이미지파일명으로 직접 매칭하여 결함 타입(high/mid/low)을 가져옵니다.
+    같은 차량번호에 여러 도어(좌/우)가 있을 수 있으므로, 차량번호가 아니라
+    '이미지파일명' 열만 사용해서 한 행만 선택합니다.
+    
+    반환:
+        (defect_dict 또는 None, needs_review: bool)
+    """
     if df is None:
-        return None
+        return None, False
+    
+    img_key = _normalize_image_name(image_filename)
+    df_keys = df['이미지파일명'].astype(str).apply(_normalize_image_name)
     matching_rows = df[
-        (df['차량번호'] == vehicle_number) &
+        (df_keys == img_key) &
         (df['상단'].notna() | df['중간'].notna() | df['하단'].notna())
     ]
     if len(matching_rows) == 0:
-        return None
-    if len(matching_rows) > 1:
-        return None
+        return None, False
     
+    needs_review = len(matching_rows) > 1
     row = matching_rows.iloc[0]
     high_val = row['상단']
     mid_val = row['중간']
@@ -168,14 +238,7 @@ def get_defect_type_from_excel(df, image_filename, vehicle_number):
     if pd.notna(high_val): result['high'] = int(high_val) - 1
     if pd.notna(mid_val): result['mid'] = int(mid_val) - 1
     if pd.notna(low_val): result['low'] = int(low_val) - 1
-    return result if result else None
-
-
-def get_vehicle_number_from_excel(df, image_filename):
-    if df is None: return None
-    matching_rows = df[df['이미지파일명'] == image_filename]
-    if len(matching_rows) == 0: return None
-    return matching_rows.iloc[0]['차량번호']
+    return (result if result else None), needs_review
 
 
 def clean_directory(target_dir):
@@ -272,12 +335,9 @@ def process_door_mode(base_dir, excel_path=None):
             
             defect_types = None
             if is_bad and df is not None:
-                vehicle_number = get_vehicle_number_from_excel(df, img_name)
-                if vehicle_number:
-                    defect_types = get_defect_type_from_excel(df, img_name, vehicle_number)
-                    if defect_types is None:
-                        matching_rows = df[(df['차량번호'] == vehicle_number) & (df['상단'].notna() | df['중간'].notna() | df['하단'].notna())]
-                        if len(matching_rows) > 1: review_needed.append(img_name)
+                defect_types, needs_review = get_defect_type_from_excel(df, img_name)
+                if needs_review:
+                    review_needed.append(img_name)
             
             for cls, x, y, w, h, angle in labels_data:
                 cx, cy = x * img_w, y * img_h
@@ -372,31 +432,42 @@ def process_bolt_mode(base_dir):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--target_dir', nargs='*')
-    parser.add_argument('--date-range', nargs=2)
+    parser.add_argument('--target_dir', nargs='*',
+                        help='일반 폴더 날짜들 (예: 0616 0718 0721)')
+    parser.add_argument('--date-range', nargs=2, metavar=('START', 'END'),
+                        help='일반 폴더 날짜 구간 (MMDD 또는 YYYYMMDD)')
+    parser.add_argument('--obb-folders', nargs='*',
+                        help='OBB 폴더 날짜들 (예: 0718 0806)')
+    parser.add_argument('--obb-date-range', nargs=2, metavar=('START', 'END'),
+                        help='OBB 폴더 날짜 구간 (MMDD 또는 YYYYMMDD)')
     parser.add_argument('--mode', choices=['door', 'bolt'], required=True)
     parser.add_argument('--clean', action='store_true', help='실행 전 기존 crop, debug 폴더 삭제')
     args = parser.parse_args()
     
     base_path = "/home/work/datasets"
+    obb_base_path = os.path.join(base_path, "OBB")
     
-    def collect_date_range_folders(base, s, e):
-        s_val, e_val = int(s), int(e)
-        if s_val > e_val: s_val, e_val = e_val, s_val
-        found = []
-        if not os.path.exists(base): return []
-        for name in os.listdir(base):
-            if name.isdigit() and len(name) == 4:
-                if s_val <= int(name) <= e_val:
-                    found.append(os.path.join(base, name))
-        return sorted(found)
-    
+    # 일반 폴더 수집
     if args.date_range:
-        target_dirs = collect_date_range_folders(base_path, args.date_range[0], args.date_range[1])
+        start, end = args.date_range
+        target_dirs = collect_date_range_folders(base_path, start, end)
     elif args.target_dir:
         target_dirs = [os.path.join(base_path, d) for d in args.target_dir]
     else:
-        print("target_dir 또는 date-range 필요")
+        target_dirs = []
+
+    # OBB 폴더 수집
+    obb_dirs = []
+    if args.obb_date_range:
+        start, end = args.obb_date_range
+        obb_dirs = collect_date_range_folders(obb_base_path, start, end)
+    elif args.obb_folders:
+        obb_dirs = [os.path.join(obb_base_path, d) for d in args.obb_folders]
+
+    # 최종 대상
+    target_dirs = target_dirs + obb_dirs
+    if not target_dirs:
+        print("target_dir/date-range 또는 obb-folders/obb-date-range 중 하나는 필요합니다.")
         return
 
     print(f"대상: {[os.path.basename(p) for p in target_dirs]}")
