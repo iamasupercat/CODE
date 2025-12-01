@@ -43,14 +43,14 @@ Door 폴더 구조:
     │       └── (동일 구조)
 
 사용법:
-    # Bolt 모드 (기본 2클래스):
+    # Bolt 모드 (기본 2클래스, 일반 폴더만):
     python dino_split.py \
         --mode bolt \
         --folders 0616 0718 0721 \
         --subfolders frontfender hood trunklid \
         --name bolt
 
-    # Bolt 모드 (4클래스):
+    # Bolt 모드 (4클래스, 일반 폴더만):
     python dino_split.py \
         --mode bolt \
         --bolt-4class \
@@ -58,14 +58,14 @@ Door 폴더 구조:
         --subfolders frontfender hood trunklid \
         --name bolt_4class
 
-    # Door 모드 (기본, 클래스 분리):
+    # Door 모드 (기본, 클래스 분리 – 일반 폴더만):
     python dino_split.py \
         --mode door \
         --folders 0616 0721 0728 \
         --subfolders frontdoor \
         --name door
 
-    # Door 모드 (클래스 병합):
+    # Door 모드 (클래스 병합 – 일반 폴더만):
     python dino_split.py \
         --mode door \
         --merge-classes \
@@ -73,6 +73,22 @@ Door 폴더 구조:
         --subfolders frontdoor \
         --name door_merged
 
+
+
+   
+    python DINOsplit.py \
+    --mode bolt \
+    --bad-date-range 0807 1013 \
+    --good-date-range 0616 1103 \
+    --subfolders frontfender hood trunklid \
+    --name Bolt
+   
+
+    # subfolders만 공유
+    --date-range 0807 0821 \    
+    --obb-date-range 0718 0806 \
+    --obb-folders 0718 \
+   
     # 결과: 
     # TXT/train_dino_{name}.txt, TXT/val_dino_{name}.txt, TXT/test_dino_{name}.txt
     # 형식: 경로 라벨 (예: /path/to/image.jpg 0)
@@ -198,8 +214,15 @@ def collect_original_folders(base_folders, subfolder_names):
     
     return original_folders
 
-def collect_bolt_images(base_folders, subfolder_names, use_4class=False):
-    """Bolt 모드: 크롭된 이미지들을 수집하는 함수"""
+def collect_bolt_images(base_folders, subfolder_names, use_4class=False, quality_filter=None):
+    """Bolt 모드: 크롭된 이미지들을 수집하는 함수
+    
+    Args:
+        base_folders: 날짜 폴더들의 절대경로 리스트
+        subfolder_names: frontfender/hood/trunklid 등 하위 폴더 이름 리스트
+        use_4class: True면 4클래스 모드, False면 2클래스 모드
+        quality_filter: None이면 bad/good 모두, 'bad' 또는 'good'이면 해당 quality만 수집
+    """
     all_images = []
     
     for base_folder in base_folders:
@@ -218,7 +241,8 @@ def collect_bolt_images(base_folders, subfolder_names, use_4class=False):
                 
             print(f"  하위폴더: {subfolder_name}")
             
-            for quality in ['bad', 'good']:
+            qualities = ['bad', 'good'] if quality_filter is None else [quality_filter]
+            for quality in qualities:
                 quality_path = os.path.join(subfolder_path, quality)
                 
                 if not os.path.isdir(quality_path):
@@ -513,17 +537,25 @@ def main():
     parser.add_argument('--mode', choices=['bolt', 'door'], required=True,
                        help='모드 선택: bolt 또는 door')
     parser.add_argument('--folders', nargs='+', 
-                       help='분석할 기본 폴더 날짜들 (예: 0616 0718 0721)')
+                       help='분석할 기본 폴더 날짜들 (예: 0616 0718 0721, 일반 폴더)')
     parser.add_argument('--date-range', nargs=2, metavar=('START', 'END'),
-                       help='날짜 구간 선택 (MMDD). 예: --date-range 0807 1103')
+                       help='일반 폴더 날짜 구간 선택 (MMDD). 예: --date-range 0807 1103')
+    parser.add_argument('--obb-folders', nargs='+',
+                       help='분석할 OBB 폴더 날짜들 (예: 0718 0806)')
+    parser.add_argument('--obb-date-range', nargs=2, metavar=('START', 'END'),
+                       help='OBB 폴더 날짜 구간 선택 (MMDD). 예: --obb-date-range 0718 0806')
     parser.add_argument('--subfolders', nargs='+', required=True,
-                       help='찾을 하위폴더들 (여러 개 가능)')
+                       help='찾을 하위폴더들 (여러 개 가능, 일반/OBB 공통)')
     parser.add_argument('--name', type=str, default='',
                        help='출력 파일명에 사용할 이름')
     
     # Bolt 모드 옵션
     parser.add_argument('--bolt-4class', action='store_true',
                        help='Bolt 모드: 4클래스 사용 (정측면 양품/불량, 측면 양품/불량)')
+    parser.add_argument('--bad-date-range', nargs=2, metavar=('START', 'END'),
+                       help='Bolt 모드: bad용 일반 폴더 날짜 구간 (MMDD). 예: --bad-date-range 0616 0806')
+    parser.add_argument('--good-date-range', nargs=2, metavar=('START', 'END'),
+                       help='Bolt 모드: good용 일반 폴더 날짜 구간 (MMDD). 예: --good-date-range 0807 1103')
     
     # Door 모드 옵션
     parser.add_argument('--merge-classes', action='store_true',
@@ -535,18 +567,38 @@ def main():
     
     base_path = "/home/work/datasets"
     
+    # 일반 폴더
     if args.date_range:
         start, end = args.date_range
         target_folders = collect_date_range_folders(base_path, start, end)
-        print(f"날짜 구간: {start} ~ {end}")
+        print(f"일반 폴더 날짜 구간: {start} ~ {end}")
     elif args.folders:
         target_folders = [os.path.join(base_path, date) for date in args.folders]
     else:
-        parser.error("--folders 또는 --date-range 중 하나는 반드시 지정해야 합니다.")
+        target_folders = []
+    
+    # OBB 폴더
+    obb_base_path = os.path.join(base_path, "OBB")
+    obb_folders = []
+    if args.obb_date_range:
+        start, end = args.obb_date_range
+        obb_folders = collect_date_range_folders(obb_base_path, start, end)
+        print(f"OBB 폴더 날짜 구간: {start} ~ {end}")
+    elif args.obb_folders:
+        obb_folders = [os.path.join(obb_base_path, date) for date in args.obb_folders]
+    
+    # 최종 대상 폴더 (일반 + OBB) - Door 모드 기본용
+    all_folders = target_folders + obb_folders
+    if not all_folders and not (args.mode == 'bolt' and (args.bad_date_range or args.good_date_range)):
+        parser.error("--folders/--date-range 또는 --obb-folders/--obb-date-range 또는 --bad-date-range/--good-date-range 중 하나는 반드시 지정해야 합니다.")
     
     display_dates = [os.path.basename(p) for p in target_folders]
+    obb_display_dates = [os.path.basename(p) for p in obb_folders]
     print(f"모드: {args.mode}")
-    print(f"분석할 기본 폴더들: {display_dates}")
+    if display_dates:
+        print(f"일반 폴더들: {display_dates}")
+    if obb_display_dates:
+        print(f"OBB 폴더들: {obb_display_dates}")
     print(f"찾을 하위폴더들: {args.subfolders}")
     if args.name:
         print(f"출력 파일 이름: {args.name}")
@@ -557,8 +609,38 @@ def main():
             print("Bolt 모드: 4클래스 사용 (정측면 양품/불량, 측면 양품/불량)")
         else:
             print("Bolt 모드: 2클래스 사용 (good/bad)")
-        
-        dino_images = collect_bolt_images(target_folders, args.subfolders, args.bolt_4class)
+        # bad/good 각각 별도 날짜 범위가 지정된 경우
+        if args.bad_date_range or args.good_date_range:
+            # 기본값은 전체 target_folders 사용
+            bad_base_folders = target_folders
+            good_base_folders = target_folders
+            # bad 전용 범위
+            if args.bad_date_range:
+                b_start, b_end = args.bad_date_range
+                bad_base_folders = collect_date_range_folders(base_path, b_start, b_end)
+                print(f"  bad용 일반 폴더 날짜 구간: {b_start} ~ {b_end}")
+            # good 전용 범위
+            if args.good_date_range:
+                g_start, g_end = args.good_date_range
+                good_base_folders = collect_date_range_folders(base_path, g_start, g_end)
+                print(f"  good용 일반 폴더 날짜 구간: {g_start} ~ {g_end}")
+            # OBB 폴더는 bad/good 공통 사용
+            bad_folders = bad_base_folders + obb_folders
+            good_folders = good_base_folders + obb_folders
+            dino_images = []
+            # bad만 수집
+            if bad_folders:
+                dino_images.extend(collect_bolt_images(bad_folders, args.subfolders,
+                                                       use_4class=args.bolt_4class,
+                                                       quality_filter='bad'))
+            # good만 수집
+            if good_folders:
+                dino_images.extend(collect_bolt_images(good_folders, args.subfolders,
+                                                       use_4class=args.bolt_4class,
+                                                       quality_filter='good'))
+        else:
+            # 기존 동작: bad/good 동일 폴더 범위
+            dino_images = collect_bolt_images(all_folders, args.subfolders, args.bolt_4class)
         
     elif args.mode == 'door':
         merge_classes = args.merge_classes
@@ -567,15 +649,15 @@ def main():
         else:
             print("Door 모드: 클래스 1,2,3을 각각 유지")
         
-        # 원본 폴더명 수집
-        original_folders = collect_original_folders(target_folders, args.subfolders)
+        # 원본 폴더명 수집 (일반 + OBB)
+        original_folders = collect_original_folders(all_folders, args.subfolders)
         print(f"\n총 {len(original_folders)}개 원본 폴더명 수집 완료")
         
         if not original_folders:
             print("수집된 원본 폴더명이 없습니다.")
             return
         
-        dino_images = collect_door_images(target_folders, args.subfolders, original_folders, merge_classes)
+        dino_images = collect_door_images(all_folders, args.subfolders, original_folders, merge_classes)
     
     if not dino_images:
         print("수집된 DINO용 이미지가 없습니다.")
