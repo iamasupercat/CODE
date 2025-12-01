@@ -45,7 +45,7 @@ from collections import defaultdict
 
 random.seed(42)
 
-SPLIT_RATIO = [0.7, 0.2, 0.1]  # train, val, test
+SPLIT_RATIO = [0.7, 0.1, 0.2]  # train, val, test
 IMG_EXTS = {'.jpg', '.jpeg', '.png', '.bmp'}
 
 

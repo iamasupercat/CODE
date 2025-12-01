@@ -2,12 +2,24 @@
 """
 크롭된 이미지에 데이터 증강을 적용하는 스크립트
 6가지 증강 기법을 적용하여 각 이미지당 6개의 증강된 이미지를 생성합니다.
+(rot, flip, noise, gray, bright, contrast)
+rot: 랜덤 회전 (-180° ~ +180°)
+noise: mean 0, std 10
+bright: +40 (hsv의 v채널에 +40)
+contrast: 1.5배 (hsv의 s채널에 1.5배)
 
 사용법:
+    # 개별 날짜 지정
     python bolt_aug_for_resnet.py \
         --target_dir 0616 0718 0721 0725 0728 0729 0731 0801 0804 0805 0806 \
         --subfolders frontfender hood trunklid \
         --set_types bad good
+    
+    # 날짜 범위 지정
+    python bolt_aug_for_resnet.py \
+        --date-range 0807 1013 \
+        --subfolders frontfender hood trunklid \
+        --set_types bad
 
 옵션 설명:
     --target_dir: 대상 폴더 경로들 (기본값: 현재 디렉토리)
@@ -23,24 +35,20 @@
     │   │   ├── labels/          # YOLO 라벨 파일들
     │   │   ├── crop_bolt/        
     │   │   │  ├──0/       # 정측면
-    │   │   │  └──1/       # 정면
-    │   │   │  └──2/       # 측면
+    │   │   │  └──1/       # 측면
     │   │   ├── crop_bolt_aug/        
     │   │   │  ├──0/       # 정측면_aug
-    │   │   │  ├──1/       # 정면_aug
-    │   │   │  └──2/       # 측면_aug
+    │   │   │  └──1/       # 측면_aug
     │   │   └── debug_crop/      
     │   └── good/
     │       ├── images/          # 원본 이미지들
     │       ├── labels/          # YOLO 라벨 파일들
     │       ├── crop_bolt/        
     │       │  ├──0/       # 정측면
-    │       │  ├──1/       # 정면  
-    │       │  └──2/       # 측면
+    │       │  └──1/       # 측면
     │       ├── crop_bolt_aug/        
     │       │  ├──0/       # 정측면_aug
-    │       │  ├──1/       # 정면_aug
-    │       │  └──2/       # 측면_aug
+    │       │  └──1/       # 측면_aug
     │       └── debug_crop/  
 
 증강 기법:
@@ -62,6 +70,39 @@ import cv2
 import numpy as np
 import argparse
 from glob import glob
+
+def collect_date_range_folders(base_path: str, start: str, end: str):
+    """
+    base_path 아래 날짜 폴더 중 start~end 범위(포함)의 절대경로 리스트 반환.
+    - 지원 포맷: 4자리(MMDD) 또는 8자리(YYYYMMDD)
+    - 입력 길이에 맞는 폴더만 비교 대상으로 포함
+    """
+    if not (start.isdigit() and end.isdigit()):
+        raise ValueError("date-range는 숫자만 가능합니다. 예: 0715 0805 또는 20240715 20240805")
+    if len(start) != len(end) or len(start) not in (4, 8):
+        raise ValueError("date-range는 4자리(MMDD) 또는 8자리(YYYYMMDD)로 동일 길이여야 합니다.")
+
+    s_val, e_val = int(start), int(end)
+    if s_val > e_val:
+        s_val, e_val = e_val, s_val
+
+    found = []
+    try:
+        for name in os.listdir(base_path):
+            full = os.path.join(base_path, name)
+            if not os.path.isdir(full):
+                continue
+            if not (name.isdigit() and len(name) == len(start)):
+                continue
+            val = int(name)
+            if s_val <= val <= e_val:
+                found.append(os.path.abspath(full))
+    except FileNotFoundError:
+        print(f"기본 경로가 존재하지 않습니다: {base_path}")
+        return []
+
+    found.sort(key=lambda p: int(os.path.basename(p)))
+    return found
 
 # 증강 함수들
 def small_rotation(img):
@@ -130,8 +171,8 @@ def process_all(target_dirs, subfolders, set_types):
                     print(f"소스 디렉토리가 존재하지 않음: {src_base_dir}")
                     continue
                 
-                # 0,1,2 서브폴더 처리
-                for subdir in ['0', '1', '2']:
+                # 0,1 서브폴더 처리 (정측면, 측면)
+                for subdir in ['0', '1']:
                     src_dir = os.path.join(src_base_dir, subdir)
                     dst_dir = os.path.join(dst_base_dir, subdir)
                     
@@ -167,8 +208,10 @@ def process_all(target_dirs, subfolders, set_types):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='크롭된 이미지에 데이터 증강을 적용합니다.')
-    parser.add_argument('--target_dir', nargs='+', default=['0616', '0718', '0721', '0725', '0728', '0729', '0731', '0801', '0804', '0805', '0806'], 
-                       help='대상 폴더 날짜들 (기본값: 0616 0718 0721 0725 0728 0729 0731 0801 0804 0805 0806)')
+    parser.add_argument('--target_dir', nargs='+', 
+                       help='대상 폴더 날짜들 (예: 0616 0718 0721)')
+    parser.add_argument('--date-range', nargs=2, metavar=('START', 'END'),
+                       help='날짜 구간 선택 (MMDD). 예: --date-range 0616 0806')
     parser.add_argument('--subfolders', nargs='+', 
                        default=['hood_revised', 'trunk_revised', 'front_revised'],
                        help='처리할 서브폴더들 (기본값: hood_revised trunk_revised front_revised)')
@@ -180,9 +223,18 @@ if __name__ == '__main__':
     
     # 날짜를 절대경로로 변환
     base_path = "/home/work/datasets"
-    target_dirs = [os.path.join(base_path, date) for date in args.target_dir]
     
-    print(f"대상 폴더들: {args.target_dir}")
+    if args.date_range:
+        start, end = args.date_range
+        target_dirs = collect_date_range_folders(base_path, start, end)
+        print(f"날짜 구간: {start} ~ {end}")
+    elif args.target_dir:
+        target_dirs = [os.path.join(base_path, date) for date in args.target_dir]
+    else:
+        parser.error("--target_dir 또는 --date-range 중 하나는 반드시 지정해야 합니다.")
+    
+    display_dates = [os.path.basename(p) for p in target_dirs]
+    print(f"대상 폴더들: {display_dates}")
     print(f"절대경로: {target_dirs}")
     print(f"처리할 서브폴더들: {args.subfolders}")
     print(f"처리할 set 타입들: {args.set_types}")

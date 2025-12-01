@@ -1,5 +1,5 @@
 '''
-원본이미지 증강: 노이즈, 색상반전, 좌우반전
+원본이미지 증강: noise, invert, flip
 이미 aug가 있는 경우: 덮어씌우기 (image, txt 모두)
 
 OBB 폴더 지원: /home/work/datasets/OBB/ 아래의 날짜 폴더도 자동으로 검색합니다.
