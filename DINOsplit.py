@@ -82,6 +82,14 @@ Door 폴더 구조:
     --good-date-range 0616 1103 \
     --subfolders frontfender hood trunklid \
     --name Bolt
+
+    python DINOsplit.py \
+    --mode bolt \
+    --bolt-4class \
+    --bad-date-range 0807 1013 \
+    --good-date-range 0616 1103 \
+    --subfolders frontfender hood trunklid \
+    --name Bolt_4class
    
 
     # subfolders만 공유
