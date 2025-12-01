@@ -155,9 +155,13 @@ def extract_image_id_bolt(img_name: str) -> str:
     img_name_clean = img_name
     
     for suffix in aug_suffixes:
-        if img_name_clean.endswith(suffix + '.jpg') or img_name_clean.endswith(suffix + '.png'):
-            img_name_clean = img_name_clean[:-len(suffix)] + ('.jpg' if img_name_clean.endswith('.jpg') else '.png')
-            break
+        # YOLOsplit과 동일하게, 예: xxx_flip.jpg, xxx_noise.png 에서 "_flip", "_noise" 부분만 제거
+        for ext in ('.jpg', '.png'):
+            full_suffix = suffix + ext  # "_flip.jpg"
+            if img_name_clean.endswith(full_suffix):
+                # 뒤에서 full_suffix 전체를 제거하고, 원래 확장자를 다시 붙임
+                img_name_clean = img_name_clean[:-len(full_suffix)] + ext
+                break
     
     parts = img_name_clean.split('_')
     for i, part in enumerate(parts):
