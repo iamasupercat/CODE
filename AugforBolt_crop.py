@@ -16,10 +16,20 @@ contrast: 1.5배 (hsv의 s채널에 1.5배)
         --set_types bad good
     
     # 날짜 범위 지정
-    python bolt_aug_for_resnet.py \
+    python AugforBolt_crop.py \
         --date-range 0807 1013 \
         --subfolders frontfender hood trunklid \
         --set_types bad
+    
+    # 일반 폴더 + OBB 폴더 (별도 날짜 범위)
+    python AugforBolt_crop.py \
+        --date-range 0807 1109 \
+        --obb-date-range 0616 0806 \
+        --subfolders frontfender hood trunklid \
+        --set_types bad good
+
+
+    
 
 옵션 설명:
     --target_dir: 대상 폴더 경로들 (기본값: 현재 디렉토리)
@@ -209,9 +219,13 @@ def process_all(target_dirs, subfolders, set_types):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='크롭된 이미지에 데이터 증강을 적용합니다.')
     parser.add_argument('--target_dir', nargs='+', 
-                       help='대상 폴더 날짜들 (예: 0616 0718 0721)')
+                       help='대상 폴더 날짜들 (예: 0616 0718 0721, 일반 폴더)')
     parser.add_argument('--date-range', nargs=2, metavar=('START', 'END'),
-                       help='날짜 구간 선택 (MMDD). 예: --date-range 0616 0806')
+                       help='일반 폴더 날짜 구간 선택 (MMDD). 예: --date-range 0616 0806')
+    parser.add_argument('--obb-folders', nargs='+',
+                       help='분석할 OBB 폴더 날짜들 (예: 0718 0806)')
+    parser.add_argument('--obb-date-range', nargs=2, metavar=('START', 'END'),
+                       help='OBB 폴더 날짜 구간 선택 (MMDD). 예: --obb-date-range 0718 0806')
     parser.add_argument('--subfolders', nargs='+', 
                        default=['hood_revised', 'trunk_revised', 'front_revised'],
                        help='처리할 서브폴더들 (기본값: hood_revised trunk_revised front_revised)')
@@ -223,19 +237,38 @@ if __name__ == '__main__':
     
     # 날짜를 절대경로로 변환
     base_path = "/home/work/datasets"
+    obb_base_path = os.path.join(base_path, "OBB")
     
+    # 일반 폴더 수집
     if args.date_range:
         start, end = args.date_range
         target_dirs = collect_date_range_folders(base_path, start, end)
-        print(f"날짜 구간: {start} ~ {end}")
+        print(f"일반 폴더 날짜 구간: {start} ~ {end}")
     elif args.target_dir:
         target_dirs = [os.path.join(base_path, date) for date in args.target_dir]
     else:
-        parser.error("--target_dir 또는 --date-range 중 하나는 반드시 지정해야 합니다.")
+        target_dirs = []
     
-    display_dates = [os.path.basename(p) for p in target_dirs]
-    print(f"대상 폴더들: {display_dates}")
-    print(f"절대경로: {target_dirs}")
+    # OBB 폴더 수집
+    obb_dirs = []
+    if args.obb_date_range:
+        start, end = args.obb_date_range
+        obb_dirs = collect_date_range_folders(obb_base_path, start, end)
+        print(f"OBB 폴더 날짜 구간: {start} ~ {end}")
+    elif args.obb_folders:
+        obb_dirs = [os.path.join(obb_base_path, date) for date in args.obb_folders]
+    
+    # 최종 대상 폴더 (일반 + OBB)
+    target_dirs = target_dirs + obb_dirs
+    if not target_dirs:
+        parser.error("--target_dir/--date-range 또는 --obb-folders/--obb-date-range 중 하나는 반드시 지정해야 합니다.")
+    
+    display_dates = [os.path.basename(p) for p in target_dirs if p.startswith(base_path) and not p.startswith(obb_base_path)]
+    obb_display_dates = [os.path.basename(p) for p in target_dirs if p.startswith(obb_base_path)]
+    
+    print(f"일반 폴더들: {display_dates if display_dates else '없음'}")
+    if obb_display_dates:
+        print(f"OBB 폴더들: {obb_display_dates}")
     print(f"처리할 서브폴더들: {args.subfolders}")
     print(f"처리할 set 타입들: {args.set_types}")
     

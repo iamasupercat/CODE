@@ -21,13 +21,13 @@ YOLO 훈련/검증/테스트 split만 생성하는 스크립트
         │   ├── frontfender/
         │   │   ├── bad/images/
         │   │   └── good/images/
-        └── ...
+    └── ...
 
 사용법:
     # 일반 폴더만
     python YOLOsplit.py \
-        --folders 0718 0721 \
-        --subfolders frontfender hood trunklid \
+          --folders 0718 0721 \
+          --subfolders frontfender hood trunklid \
         --name bolt_obb
 
     # 일반 폴더 + OBB 폴더 (별도 날짜 범위)
@@ -90,7 +90,7 @@ def extract_image_id(img_name: str) -> str:
             if img_name_clean.endswith(full_suffix):
                 # 뒤에서 full_suffix 전체를 제거하고, 원래 확장자를 다시 붙임
                 img_name_clean = img_name_clean[:-len(full_suffix)] + ext
-                break
+            break
 
     parts = img_name_clean.split('_')
     for i, part in enumerate(parts):
@@ -431,7 +431,7 @@ def main():
     if not all_yolo_images:
         print("\n수집된 YOLO용 이미지가 없습니다.")
         return
-    
+
     print(f"\n총 {len(all_yolo_images)}개 YOLO용 이미지 수집 완료")
 
     yolo_splits = yolo_stratified_split(all_yolo_images, SPLIT_RATIO)

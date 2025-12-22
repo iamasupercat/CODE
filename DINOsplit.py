@@ -13,6 +13,14 @@ ResNet txt 형식과 동일하게 경로와 라벨을 저장합니다.
    - --merge-classes: 1,2,3을 1로 합침 (0은 그대로)
    - --separate-classes: 1,2,3을 각각 유지 (기본값)
 
+3. Door Area 모드 (--mode door_area):
+   - 앞도어 상/중/하 영역별로 각각 split 수행
+   - 상단: crop_high (원본), crop_high_aug (증강)
+   - 중간: crop_mid (원본), crop_mid_aug (증강)
+   - 하단: crop_low (원본), crop_low_aug (증강)
+   - 하위 폴더 클래스 번호(0,1,2,3) 그대로 사용
+   - --merge-classes: 1,2,3을 1로 합침 (0은 그대로)
+
 Bolt 폴더 구조:
     target_dir/
     ├── subfolder/
@@ -36,9 +44,8 @@ Door 폴더 구조:
     │   │   │  ├──1/       # 실링없음
     │   │   │  ├──2/       # 작업실링
     │   │   │  └──3/       # 테이프실링
-    │   │   ├── crop_mid/        
-    │   │   ├── crop_low/        
-    │   │   └── crop_*_aug/        
+    │   │   ├── crop_mid/             
+    │   │   └── crop_low/        
     │   └── good/
     │       └── (동일 구조)
 
@@ -73,9 +80,51 @@ Door 폴더 구조:
         --subfolders frontdoor \
         --name door_merged
 
+    # Door Area 모드 (상/중/하 영역별 split, 일반 폴더만):
+    python dino_split.py \
+        --mode door_area \
+        --folders 0616 0721 0728 \
+        --subfolders frontdoor \
+        --name door_area
+
+    # Door Area 모드 (high, mid만 선택, high/mid는 병합, low는 분리):
+    python dino_split.py \
+        --mode door_area \
+        --areas high mid \
+        --merge-areas high mid \
+        --folders 0616 0721 0728 \
+        --subfolders frontdoor \
+        --name door_area_selective
+
+    # Door Area 모드 (모든 영역 처리, high/mid만 병합):
+    python dino_split.py \
+        --mode door_area \
+        --areas high mid low \
+        --merge-areas high mid \
+        --folders 0616 0721 0728 \
+        --subfolders frontdoor \
+        --name door_area_partial_merge
+
+    # Door Area 모드 (상/중/하 영역별 split, 일반 + OBB 폴더):
+    python dino_split.py \
+        --mode door_area \
+        --date-range 0807 1109 \
+        --obb-date-range 0616 0806 \
+        --subfolders frontdoor \
+        --name Door
+
+    # Door Area 모드 (high/mid만 병합, 일반 + OBB 폴더):
+    python dino_split.py \
+        --mode door_area \
+        --merge-areas high mid \
+        --date-range 0807 1103 \
+        --obb-date-range 0718 0806 \
+        --subfolders frontdoor \
+        --name Door_2class
 
 
-   
+
+   # split에 사용한 명령어
     python DINOsplit.py \
     --mode bolt \
     --bad-date-range 0807 1013 \
@@ -90,7 +139,24 @@ Door 폴더 구조:
     --good-date-range 0616 1103 \
     --subfolders frontfender hood trunklid \
     --name Bolt_4class
-   
+
+    python DINOsplit.py \
+        --mode door_area \
+        --merge-areas high mid low\
+        --date-range 0807 1109 \
+        --obb-date-range 0616 0806 \
+        --subfolders frontdoor \
+        --name Door_2class
+    
+   python DINOsplit.py \
+        --mode door_area \
+        --areas low \
+        --date-range 0807 1109 \
+        --obb-date-range 0616 0806 \
+        --subfolders frontdoor \
+        --name Door_4class
+
+
 
     # subfolders만 공유
     --date-range 0807 0821 \    
@@ -332,9 +398,31 @@ def collect_bolt_images(base_folders, subfolder_names, use_4class=False, quality
     
     return all_images
 
-def collect_door_images(base_folders, subfolder_names, original_folders, merge_classes=False):
-    """Door 모드: 크롭된 이미지들을 수집하는 함수"""
+def collect_door_images(base_folders, subfolder_names, original_folders, merge_classes=False, target_areas=None):
+    """Door 모드: 크롭된 이미지들을 수집하는 함수
+    
+    Args:
+        base_folders: 날짜 폴더들의 절대경로 리스트
+        subfolder_names: frontdoor 등 하위 폴더 이름 리스트
+        original_folders: 원본 이미지 파일명(확장자 제외) 집합
+        merge_classes: True면 클래스 1,2,3을 1로 합침
+        target_areas: None이면 모든 영역, ['high'], ['mid'], ['low'] 등 특정 영역만 수집
+    """
     all_images = []
+    
+    # 사용할 영역 설정
+    if target_areas is None:
+        crop_areas = ['crop_high', 'crop_mid', 'crop_low']
+    else:
+        area_map = {
+            'high': 'crop_high',
+            'mid': 'crop_mid',
+            'low': 'crop_low'
+        }
+        crop_areas = [area_map[a] for a in target_areas if a in area_map]
+        if not crop_areas:
+            print(f"유효한 영역이 없습니다: {target_areas}")
+            return all_images
     
     for base_folder in base_folders:
         if not os.path.isdir(base_folder):
@@ -359,7 +447,6 @@ def collect_door_images(base_folders, subfolder_names, original_folders, merge_c
                     print(f"    {quality} 폴더가 존재하지 않습니다")
                     continue
                 
-                crop_areas = ['crop_high', 'crop_mid', 'crop_low']
                 crop_folders = []
                 for area in crop_areas:
                     crop_folders.append(area)
@@ -465,34 +552,59 @@ def collect_door_images(base_folders, subfolder_names, original_folders, merge_c
     return all_images
 
 def stratified_split(images, ratios):
-    """이미지를 stratified split하는 함수"""
-    groups = defaultdict(list)
-    for img in images:
-        key = f"{img['base_folder']}/{img['subfolder']}/{img['quality']}"
-        groups[key].append(img)
+    """이미지를 stratified split하는 함수 (클래스 비율 유지)
     
+    각 label별로 이미지를 비율에 맞게 분할하되,
+    같은 original_image_id를 가진 이미지들은 모두 같은 split에 들어가도록 합니다.
+    이렇게 하면 데이터 누수를 방지하면서도 클래스 비율을 유지할 수 있습니다.
+    """
+    # original_image_id를 기준으로 그룹화 (같은 원본 이미지의 모든 변형을 추적)
+    id_to_images = defaultdict(list)
+    for img in images:
+        id_key = (img['base_folder'], img['subfolder'], img['quality'], img['original_image_id'])
+        id_to_images[id_key].append(img)
+    
+    # 각 label별로 이미지 분류
+    label_images = defaultdict(list)
+    for img in images:
+        label_images[img['label']].append(img)
+    
+    # 각 label별로 original_image_id 그룹을 추적
+    label_id_sets = defaultdict(set)
+    for img in images:
+        id_key = (img['base_folder'], img['subfolder'], img['quality'], img['original_image_id'])
+        label_id_sets[img['label']].add(id_key)
+    
+    train_id_set = set()
+    val_id_set = set()
+    test_id_set = set()
+    
+    # 각 label별로 original_image_id 그룹을 비율에 맞게 분할
+    for label, id_set in label_id_sets.items():
+        id_list = list(id_set)
+        random.shuffle(id_list)
+        
+        n_total = len(id_list)
+        n_train = int(n_total * ratios[0])
+        n_val = int(n_total * ratios[1])
+        n_test = n_total - n_train - n_val
+        
+        train_id_set.update(id_list[:n_train])
+        val_id_set.update(id_list[n_train:n_train+n_val])
+        test_id_set.update(id_list[n_train+n_val:])
+    
+    # 키를 기준으로 이미지 분배
     train_images = []
     val_images = []
     test_images = []
     
-    for group_key, group_images in groups.items():
-        quality_groups = defaultdict(list)
-        for img in group_images:
-            quality_groups[img['quality']].append(img)
-        
-        for quality in ['good', 'bad']:
-            if quality in quality_groups:
-                group_imgs = quality_groups[quality]
-                random.shuffle(group_imgs)
-                
-                n_total = len(group_imgs)
-                n_train = int(n_total * ratios[0])
-                n_val = int(n_total * ratios[1])
-                n_test = n_total - n_train - n_val
-                
-                train_images.extend(group_imgs[:n_train])
-                val_images.extend(group_imgs[n_train:n_train+n_val])
-                test_images.extend(group_imgs[n_train+n_val:])
+    for id_key, imgs in id_to_images.items():
+        if id_key in train_id_set:
+            train_images.extend(imgs)
+        elif id_key in val_id_set:
+            val_images.extend(imgs)
+        elif id_key in test_id_set:
+            test_images.extend(imgs)
     
     random.shuffle(train_images)
     random.shuffle(val_images)
@@ -546,8 +658,8 @@ def write_dino_split_files(splits, name=''):
 
 def main():
     parser = argparse.ArgumentParser(description='DINO 훈련용 split을 생성합니다.')
-    parser.add_argument('--mode', choices=['bolt', 'door'], required=True,
-                       help='모드 선택: bolt 또는 door')
+    parser.add_argument('--mode', choices=['bolt', 'door', 'door_area'], required=True,
+                       help='모드 선택: bolt, door 또는 door_area')
     parser.add_argument('--folders', nargs='+', 
                        help='분석할 기본 폴더 날짜들 (예: 0616 0718 0721, 일반 폴더)')
     parser.add_argument('--date-range', nargs=2, metavar=('START', 'END'),
@@ -574,6 +686,12 @@ def main():
                        help='Door 모드: 클래스 1,2,3을 1로 합침')
     parser.add_argument('--separate-classes', action='store_true',
                        help='Door 모드: 클래스 1,2,3을 각각 유지 (기본값)')
+    
+    # Door Area 모드 옵션
+    parser.add_argument('--areas', nargs='+', choices=['high', 'mid', 'low'],
+                       help='Door Area 모드: 처리할 영역 선택 (기본값: high mid low 모두)')
+    parser.add_argument('--merge-areas', nargs='+', choices=['high', 'mid', 'low'],
+                       help='Door Area 모드: 클래스 병합을 적용할 영역 선택 (예: --merge-areas high mid)')
     
     args = parser.parse_args()
     
@@ -671,11 +789,98 @@ def main():
         
         dino_images = collect_door_images(all_folders, args.subfolders, original_folders, merge_classes)
     
+    elif args.mode == 'door_area':
+        # 앞도어 상/중/하 영역별로 각각 split 수행
+        # 처리할 영역 선택
+        if args.areas:
+            areas = args.areas
+            print(f"Door Area 모드: 선택된 영역 {areas}만 처리")
+        else:
+            areas = ['high', 'mid', 'low']
+            print("Door Area 모드: 모든 영역(high, mid, low) 처리")
+        
+        # merge를 적용할 영역 설정
+        merge_areas = set(args.merge_areas) if args.merge_areas else set()
+        if merge_areas:
+            print(f"클래스 병합 적용 영역: {sorted(merge_areas)}")
+        
+        # 원본 폴더명 수집 (일반 + OBB)
+        original_folders = collect_original_folders(all_folders, args.subfolders)
+        print(f"\n총 {len(original_folders)}개 원본 폴더명 수집 완료")
+        
+        if not original_folders:
+            print("수집된 원본 폴더명이 없습니다.")
+            return
+        
+        for area in areas:
+            # 해당 영역에 merge 적용 여부 결정
+            merge_classes = area in merge_areas
+            if merge_classes:
+                print(f"\n=== {area} 영역 처리 (클래스 병합 적용) ===")
+            else:
+                print(f"\n=== {area} 영역 처리 (클래스 분리 유지) ===")
+            print(f"\n=== {area} 영역 처리 ===")
+            dino_images_area = collect_door_images(all_folders, args.subfolders, original_folders,
+                                                     merge_classes, target_areas=[area])
+            
+            if not dino_images_area:
+                print(f"{area} 영역에 수집된 DINO용 이미지가 없습니다.")
+                continue
+            
+            print(f"\n총 {len(dino_images_area)}개 DINO용 이미지 수집 완료 ({area} 영역)")
+            
+            # 원본과 증강 분리
+            original_images = [img for img in dino_images_area if not img['is_augmented']]
+            aug_images = [img for img in dino_images_area if img['is_augmented']]
+            
+            print(f"  - 원본 이미지: {len(original_images)}개")
+            print(f"  - 증강 이미지: {len(aug_images)}개")
+            
+            # 원본 이미지로 split 수행
+            train_original, val_original, test_original = stratified_split(original_images, SPLIT_RATIO)
+            
+            # train에 선택된 원본 이미지의 키 추출
+            train_original_keys = set()
+            for img in train_original:
+                key = f"{img['base_folder']}/{img['subfolder']}/{img['quality']}/{img['original_image_id']}"
+                train_original_keys.add(key)
+            
+            # train에 속한 원본에서 생성된 증강 이미지들을 train에 추가
+            train_aug = []
+            for aug_img in aug_images:
+                key = f"{aug_img['base_folder']}/{aug_img['subfolder']}/{aug_img['quality']}/{aug_img['original_image_id']}"
+                if key in train_original_keys:
+                    train_aug.append(aug_img)
+            
+            print(f"\n=== 증강 이미지 매칭 ({area} 영역) ===")
+            print(f"train에 추가된 증강 이미지: {len(train_aug)}개")
+            
+            # 최종 split 구성
+            train_final = train_original + train_aug
+            val_final = val_original
+            test_final = test_original
+            
+            random.shuffle(train_final)
+            
+            # 파일에 저장 (영역별로 별도 파일)
+            area_suffix = f"{args.name}_{area}" if args.name else f"door_{area}"
+            write_dino_split_files((train_final, val_final, test_final), area_suffix)
+        
+        return  # door_area 모드는 각 영역별로 처리 완료했으므로 여기서 종료
+    
     if not dino_images:
         print("수집된 DINO용 이미지가 없습니다.")
         return
     
     print(f"\n총 {len(dino_images)}개 DINO용 이미지 수집 완료")
+    
+    # quality별 수집 개수 출력
+    quality_counts = defaultdict(int)
+    for img in dino_images:
+        quality_counts[img['quality']] += 1
+    print(f"\n=== 수집된 이미지 quality별 개수 ===")
+    for quality in sorted(quality_counts.keys()):
+        print(f"  {quality}: {quality_counts[quality]}개")
     
     # 원본과 증강 분리
     original_images = [img for img in dino_images if not img['is_augmented']]
@@ -684,8 +889,39 @@ def main():
     print(f"  - 원본 이미지: {len(original_images)}개")
     print(f"  - 증강 이미지: {len(aug_images)}개")
     
+    # label별 원본 이미지 개수 출력
+    label_counts = defaultdict(int)
+    quality_label_counts = defaultdict(lambda: defaultdict(int))
+    for img in original_images:
+        label_counts[img['label']] += 1
+        quality_label_counts[img['quality']][img['label']] += 1
+    print(f"\n=== 원본 이미지 label별 개수 ===")
+    for label in sorted(label_counts.keys()):
+        print(f"  Label {label}: {label_counts[label]}개")
+    print(f"\n=== 원본 이미지 quality별 label별 개수 ===")
+    for quality in sorted(quality_label_counts.keys()):
+        print(f"  {quality}:")
+        for label in sorted(quality_label_counts[quality].keys()):
+            print(f"    Label {label}: {quality_label_counts[quality][label]}개")
+    
     # 원본 이미지로 split 수행
     train_original, val_original, test_original = stratified_split(original_images, SPLIT_RATIO)
+    
+    # split 결과 label별 개수 출력
+    def count_labels(imgs):
+        counts = defaultdict(int)
+        for img in imgs:
+            counts[img['label']] += 1
+        return counts
+    
+    train_label_counts = count_labels(train_original)
+    val_label_counts = count_labels(val_original)
+    test_label_counts = count_labels(test_original)
+    
+    print(f"\n=== Split 결과 label별 개수 ===")
+    print(f"Train: {dict(sorted(train_label_counts.items()))}")
+    print(f"Val: {dict(sorted(val_label_counts.items()))}")
+    print(f"Test: {dict(sorted(test_label_counts.items()))}")
     
     # train에 선택된 원본 이미지의 키 추출
     train_original_keys = set()
