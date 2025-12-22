@@ -1,44 +1,38 @@
 '''
 원본이미지 증강: noise, invert, flip
 이미 aug가 있는 경우: 덮어씌우기 (image, txt 모두)
+기본 경로와 OBB 폴더 모두 검색됨
 
-OBB 폴더 지원: /home/work/datasets/OBB/ 아래의 날짜 폴더도 자동으로 검색합니다.
 
+# 이 밖의 자세한 사용법은 USAGE.md 파일을 참조하세요.
 사용법:
-    python augmentation.py 1103 \
-    --subfolder hood
-
-    # 날짜 구간으로 선택 (예: 0715부터 0805까지, 해당 범위 폴더 자동 선택)
-    # 기본 경로와 OBB 폴더 모두 검색됩니다
     python augmentation.py --date-range 0616 1109 \
     --subfolder frontdoor
 
-    # OBB 폴더만 처리 (기본 경로 제외)
-    python augmentation.py --date-range 0616 0718 \
-    --subfolder trunklid hood \
-    --obb-only
 
 
 
-target_dir/
-    ├── subfolder/
-    │   ├── bad/
-    │   │   ├── images/          # 원본 이미지들
-    │   │   └──  labels/          # YOLO 라벨 파일들
-    │   │   
-    │   └── good/
-    │       ├── images/          # 원본 이미지들
-    │       └── labels/          # YOLO 라벨 파일들
-    │       
-    ├── subfolder_aug/
-    │   ├── bad/
-    │   │   ├── images/          # 증강 이미지들
-    │   │   └──  labels/          # 증강 라벨 파일들
-    │   │   
-    │   └── good/
-    │       ├── images/          # 증강 이미지들
-    │       └── labels/          # 증강 라벨 파일들
-    │ 
+
+폴더 구조:
+    target_dir/
+        ├── subfolder/
+        │   ├── bad/
+        │   │   ├── images/          # 원본 이미지들
+        │   │   └──  labels/          # YOLO 라벨 파일들
+        │   │   
+        │   └── good/
+        │       ├── images/          # 원본 이미지들
+        │       └── labels/          # YOLO 라벨 파일들
+        │       
+        ├── subfolder_aug/
+        │   ├── bad/
+        │   │   ├── images/          # 증강 이미지들
+        │   │   └──  labels/          # 증강 라벨 파일들
+        │   │   
+        │   └── good/
+        │       ├── images/          # 증강 이미지들
+        │       └── labels/          # 증강 라벨 파일들
+        │ 
 
 '''
 

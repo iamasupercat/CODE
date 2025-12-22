@@ -2,17 +2,22 @@
 """
 YOLO 라벨 파일을 BB(5개 값)와 OBB(6개 값) 모드 간 전환하는 스크립트
 
-BB 형식: class x_center y_center width height
-OBB 형식: class x_center y_center width height angle
+
 
 사용법:
     python toggle_obb_bb.py --to-bb    # 전체를 BB 형식(5개 값)으로 변환
     python toggle_obb_bb.py --to-obb   # 전체를 OBB 형식(6개 값)으로 변환
 
+
+
+
+
 동작:
     - 0718부터 0806까지의 폴더를 자동으로 처리
     - --to-bb: 모든 라인을 BB 형식(5개 값)으로 변환 (6개 값이면 마지막 값 제거)
     - --to-obb: 모든 라인을 OBB 형식(6개 값)으로 변환 (5개 값이면 0 추가)
+    BB 형식: class x_center y_center width height
+    OBB 형식: class x_center y_center width height angle
 """
 
 import os

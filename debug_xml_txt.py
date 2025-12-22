@@ -1,19 +1,12 @@
 #!/usr/bin/env python3
 """
 XML → TXT 변환 결과를 시각화하는 디버그 스크립트
-
 XML 파일과 변환된 TXT 파일의 바운딩 박스를 비교하여 변환이 올바른지 확인합니다.
 
+
+# 이 밖의 자세한 사용법은 USAGE.md 파일을 참조하세요.
 사용법:
     python debug_xml_txt.py <이미지_경로>
-    
-예시:
-    # OBB 폴더의 이미지
-    python debug_xml_txt.py /home/work/datasets/OBB/0718/hood/good/images/good_9362_1_e97d8f94-e26c-455d-9c96-40a63f6a2c83.jpg
-    
-    # 상대 경로 사용
-    cd /home/work/datasets
-    python CODE/debug_xml_txt.py OBB/0718/hood/good/images/good_9362_1_e97d8f94-e26c-455d-9c96-40a63f6a2c83.jpg
 
 결과:
     - 화면에 원본 이미지 + XML 바운딩 박스 + TXT 바운딩 박스 표시

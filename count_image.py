@@ -1,14 +1,12 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 '''
-특정 기간의 데이터 개수를 세는 스크립트
+전체 데이터 수를 출력하는 스크립트
 
-단일 날짜, 단일 부위: python count_image.py 0718 hood
-단일 날짜, 여러 부위: python count_image.py 0718 hood trunklid frontfender
-기간별, 단일 부위: python count_image.py 0807 1016 frontdoor
-기간별, 여러 부위: python count_image.py 0718 0725 hood trunklid frontfender
 
+
+
+# 이 밖의 자세한 사용법은 USAGE.md 파일을 참조하세요.
+사용법:
+    python count_image.py 0718 0725 hood trunklid frontfender
 '''
 
 import os

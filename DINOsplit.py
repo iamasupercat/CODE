@@ -1,25 +1,32 @@
 #!/usr/bin/env python3
 """
-DINO 훈련용 split을 생성하는 스크립트
-ResNet txt 형식과 동일하게 경로와 라벨을 저장합니다.
+DINO 훈련용 split을 생성하는 스크립트 (경로와 라벨을 저장하는 형식)
 
-모드:
-1. Bolt 모드 (--mode bolt):
-   - 기본: 0(good), 1(bad)
-   - --bolt-4class: 0(정측면 양품), 1(정측면 불량), 2(측면 양품), 3(측면 불량)
+
+
+# 이 밖의 자세한 사용법은 USAGE.md 파일을 참조하세요.
+사용법: 
+    python DINOsplit.py \
+    --mode bolt \
+    --bolt-4class \
+    --bad-date-range 0807 1013 \
+    --good-date-range 0616 1103 \
+    --subfolders frontfender hood trunklid \
+    --name Bolt_4class
    
-2. Door 모드 (--mode door):
-   - 기본: 0(출고실링), 1(실링없음), 2(작업실링), 3(테이프실링)
-   - --merge-classes: 1,2,3을 1로 합침 (0은 그대로)
-   - --separate-classes: 1,2,3을 각각 유지 (기본값)
+   python DINOsplit.py \
+        --mode door_area \
+        --areas high mid low\
+        --date-range 0807 1109 \
+        --obb-date-range 0616 0806 \
+        --subfolders frontdoor \
+        --name Door_5class
 
-3. Door Area 모드 (--mode door_area):
-   - 앞도어 상/중/하 영역별로 각각 split 수행
-   - 상단: crop_high (원본), crop_high_aug (증강)
-   - 중간: crop_mid (원본), crop_mid_aug (증강)
-   - 하단: crop_low (원본), crop_low_aug (증강)
-   - 하위 폴더 클래스 번호(0,1,2,3) 그대로 사용
-   - --merge-classes: 1,2,3을 1로 합침 (0은 그대로)
+결과: 
+    TXT/train_dino_{name}.txt, TXT/val_dino_{name}.txt, TXT/test_dino_{name}.txt
+
+
+
 
 Bolt 폴더 구조:
     target_dir/
@@ -48,124 +55,6 @@ Door 폴더 구조:
     │   │   └── crop_low/        
     │   └── good/
     │       └── (동일 구조)
-
-사용법:
-    # Bolt 모드 (기본 2클래스, 일반 폴더만):
-    python dino_split.py \
-        --mode bolt \
-        --folders 0616 0718 0721 \
-        --subfolders frontfender hood trunklid \
-        --name bolt
-
-    # Bolt 모드 (4클래스, 일반 폴더만):
-    python dino_split.py \
-        --mode bolt \
-        --bolt-4class \
-        --folders 0616 0718 0721 \
-        --subfolders frontfender hood trunklid \
-        --name bolt_4class
-
-    # Door 모드 (기본, 클래스 분리 – 일반 폴더만):
-    python dino_split.py \
-        --mode door \
-        --folders 0616 0721 0728 \
-        --subfolders frontdoor \
-        --name door
-
-    # Door 모드 (클래스 병합 – 일반 폴더만):
-    python dino_split.py \
-        --mode door \
-        --merge-classes \
-        --folders 0616 0721 0728 \
-        --subfolders frontdoor \
-        --name door_merged
-
-    # Door Area 모드 (상/중/하 영역별 split, 일반 폴더만):
-    python dino_split.py \
-        --mode door_area \
-        --folders 0616 0721 0728 \
-        --subfolders frontdoor \
-        --name door_area
-
-    # Door Area 모드 (high, mid만 선택, high/mid는 병합, low는 분리):
-    python dino_split.py \
-        --mode door_area \
-        --areas high mid \
-        --merge-areas high mid \
-        --folders 0616 0721 0728 \
-        --subfolders frontdoor \
-        --name door_area_selective
-
-    # Door Area 모드 (모든 영역 처리, high/mid만 병합):
-    python dino_split.py \
-        --mode door_area \
-        --areas high mid low \
-        --merge-areas high mid \
-        --folders 0616 0721 0728 \
-        --subfolders frontdoor \
-        --name door_area_partial_merge
-
-    # Door Area 모드 (상/중/하 영역별 split, 일반 + OBB 폴더):
-    python dino_split.py \
-        --mode door_area \
-        --date-range 0807 1109 \
-        --obb-date-range 0616 0806 \
-        --subfolders frontdoor \
-        --name Door
-
-    # Door Area 모드 (high/mid만 병합, 일반 + OBB 폴더):
-    python dino_split.py \
-        --mode door_area \
-        --merge-areas high mid \
-        --date-range 0807 1103 \
-        --obb-date-range 0718 0806 \
-        --subfolders frontdoor \
-        --name Door_2class
-
-
-
-   # split에 사용한 명령어
-    python DINOsplit.py \
-    --mode bolt \
-    --bad-date-range 0807 1013 \
-    --good-date-range 0616 1103 \
-    --subfolders frontfender hood trunklid \
-    --name Bolt
-
-    python DINOsplit.py \
-    --mode bolt \
-    --bolt-4class \
-    --bad-date-range 0807 1013 \
-    --good-date-range 0616 1103 \
-    --subfolders frontfender hood trunklid \
-    --name Bolt_4class
-
-    python DINOsplit.py \
-        --mode door_area \
-        --merge-areas high mid low\
-        --date-range 0807 1109 \
-        --obb-date-range 0616 0806 \
-        --subfolders frontdoor \
-        --name Door_2class
-    
-   python DINOsplit.py \
-        --mode door_area \
-        --areas low \
-        --date-range 0807 1109 \
-        --obb-date-range 0616 0806 \
-        --subfolders frontdoor \
-        --name Door_4class
-
-
-
-    # subfolders만 공유
-    --date-range 0807 0821 \    
-    --obb-date-range 0718 0806 \
-    --obb-folders 0718 \
-   
-    # 결과: 
-    # TXT/train_dino_{name}.txt, TXT/val_dino_{name}.txt, TXT/test_dino_{name}.txt
-    # 형식: 경로 라벨 (예: /path/to/image.jpg 0)
 """
 
 import os

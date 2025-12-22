@@ -1,7 +1,31 @@
 #!/usr/bin/env python3
 """
-YOLO 훈련/검증/테스트 split만 생성하는 스크립트
-원본 이미지 기준으로 분할하고, 증강 이미지는 train에만 포함합니다.
+YOLO를 위한 train/val/test set을 생성하는 스크립트 (경로만 저장하는 형식)
+원본 이미지 기준으로 분할하고 후, train에만 대응되는 증강 이미지를 추가합니다.
+
+
+# 이 밖의 자세한 사용법은 USAGE.md 파일을 참조하세요.
+사용법:
+    # 일반 폴더 + OBB 폴더 (별도 날짜 범위)
+    python YOLOsplit.py \
+        --date-range 0807 0821 \
+        --obb-date-range 0718 0806 \
+        --subfolders frontfender hood trunklid \
+        --name bolt_obb
+
+    # bad / good 날짜 범위를 따로 지정하여 분할
+    python YOLOsplit.py \
+        --bad-date-range 0807 1016 \
+        --good-date-range 0807 1109 \
+        --obb-date-range 0616 0806 \
+        --subfolders frontdoor \
+        --name Door
+
+결과:
+    TXT/train_bolt_obb.txt
+    TXT/val_bolt_obb.txt
+    TXT/test_bolt_obb.txt
+
 
 폴더 구조 예시:
     base_path/
@@ -22,47 +46,6 @@ YOLO 훈련/검증/테스트 split만 생성하는 스크립트
         │   │   ├── bad/images/
         │   │   └── good/images/
     └── ...
-
-사용법:
-    # 일반 폴더만
-    python YOLOsplit.py \
-          --folders 0718 0721 \
-          --subfolders frontfender hood trunklid \
-        --name bolt_obb
-
-    # 일반 폴더 + OBB 폴더 (별도 날짜 범위)
-    python YOLOsplit.py \
-        --date-range 0807 0821 \
-        --obb-date-range 0718 0806 \
-        --subfolders frontfender hood trunklid \
-        --name bolt_obb
-
-    # 일반 폴더 (날짜 범위) + OBB 폴더 (개별 폴더)
-    python YOLOsplit.py \
-        --date-range 0807 1103 \
-        --obb-folders 0718 \
-        --subfolders frontfender hood trunklid \
-        --name Bolt
-
-    # Door 예시 (일반 + OBB)
-    python YOLOsplit.py \
-        --date-range 0807 1103 \
-        --obb-folders 0616 0721 \
-        --subfolders frontdoor \
-        --name Door
-
-    # bad / good 날짜 범위를 따로 지정 (예: bolt OBB)
-    python YOLOsplit.py \
-        --bad-date-range 0807 1016 \
-        --good-date-range 0807 1109 \
-        --obb-date-range 0616 0806 \
-        --subfolders frontdoor \
-        --name Door
-
-결과:
-    TXT/train_bolt_obb.txt
-    TXT/val_bolt_obb.txt
-    TXT/test_bolt_obb.txt
 """
 
 import os

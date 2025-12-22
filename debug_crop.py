@@ -1,20 +1,13 @@
 #!/usr/bin/env python3
 """
 CropforBB.py의 크롭 결과를 시각화하는 디버그 스크립트
-
 원본 이미지에 OBB 바운딩 박스와 실제 크롭된 영역(BB)을 함께 표시합니다.
 
+
+# 이 밖의 자세한 사용법은 USAGE.md 파일을 참조하세요.
 사용법:
     python debug_crop.py <원본_이미지_경로>
     
-예시:
-    # 절대 경로
-    python debug_crop.py /home/work/datasets/1010/frontfender/good/images/good_8128_1_13_62c4b142-e159-4c33-9368-98c3502cc696.jpg
-    
-    # 상대 경로 (datasets 폴더에서 실행)
-    cd /home/work/datasets
-    python CODE/debug_crop.py 1010/trunklid/good/images/good_8128_1_13_62c4b142-e159-4c33-9368-98c3502cc696.jpg
-
 결과:
     - 화면에 원본 이미지 + OBB 박스 + 크롭 영역 표시
     - {원본폴더}/debug_crop_visual/{이미지명}_debug.png 파일로 저장

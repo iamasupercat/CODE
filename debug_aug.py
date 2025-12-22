@@ -1,31 +1,12 @@
-#!/usr/bin/env python3
 """
 Augmentation 결과를 시각화하는 디버그 스크립트 (obb 회전 문제 없는지 확인)
 
-원본 이미지와 증강된 이미지들(noise, invert, flip)을 바운딩 박스와 함께 시각화합니다.
 
+
+
+# 이 밖의 자세한 사용법은 USAGE.md 파일을 참조하세요.
 사용법:
     python debug_aug.py <원본_이미지_경로>
-    
-예시:
-    # 0718 폴더의 이미지
-    python debug_aug.py /home/work/datasets/0718/frontfender/bad/images/bad_0216_1_1_5a269cdf-35fe-4259-a086-7ccab92112ae.jpg
-    python debug_aug.py /home/work/datasets/0718/hood/good/images/good_5658_1_310162b3-f62f-4871-850c-4bb0d81c3059.jpg
-    
-
-
-    # 1103 폴더의 이미지
-    python debug_aug.py /home/work/datasets/1103/frontfender/bad/images/bad_6921_1_7_7576ea8b-45c4-4df1-8b49-6eb41704e7fa.jpg
-    python debug_aug.py /home/work/datasets/1103/hood/bad/images/bad_0688_1_12_0a258553-3a33-41e9-9393-107f5b275f75.jpg
-
-    # 상대 경로 사용
-    cd /home/work/datasets
-    python CODE/debug_aug.py 0718/frontfender/bad/images/bad_0216_1_1_5a269cdf-35fe-4259-a086-7ccab92112ae.jpg
-
-결과:
-    - 화면에 원본 + 증강 이미지들 표시
-    - {원본폴더}/debug_aug_output/{이미지명}_debug.png 파일로 저장
-    - 바운딩 박스 색상: 원본(초록), noise(빨강), invert(파랑), flip(노랑)
 """
 
 import cv2
