@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-frontdoor 폴더에서 frontdoor.xlsx 파일을 읽어서
-상단, 중간, 하단 각각의 1, 2, 3, 4 개수와 퍼센테이지를 출력하고,
+앞도어의 상단, 중간, 하단 각각의 불량 클래스별 개수와 퍼센테이지를 출력하고,
 good 폴더의 이미지 총 개수를 출력하는 스크립트
 
+
+# 이 밖의 자세한 사용법은 USAGE.md 파일을 참조하세요.
 사용법:
-    단일 날짜: python count_frontdoor_classes.py 1031
-    기간별: python count_frontdoor_classes.py 0807 1109
+    python count_frontdoor_classes.py 0807 1109
 """
 
 import os

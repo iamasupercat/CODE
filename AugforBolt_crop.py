@@ -1,40 +1,32 @@
 #!/usr/bin/env python3
 """
-크롭된 이미지에 데이터 증강을 적용하는 스크립트
+크롭된 볼트 이미지에 데이터 증강을 적용하는 스크립트
+
+
+
+# 이 밖의 자세한 사용법은 USAGE.md 파일을 참조하세요.
+사용법:
+    python AugforBolt_crop.py \
+        --date-range 0807 1013 \
+        --subfolders frontfender hood trunklid \
+        --set_types bad
+    
+    python AugforBolt_crop.py \
+        --obb-date-range 0616 0806 \
+        --subfolders frontfender hood trunklid \
+        --set_types good
+
+
+    
+
+
+[로직 설명]
 6가지 증강 기법을 적용하여 각 이미지당 6개의 증강된 이미지를 생성합니다.
 (rot, flip, noise, gray, bright, contrast)
 rot: 랜덤 회전 (-180° ~ +180°)
 noise: mean 0, std 10
 bright: +40 (hsv의 v채널에 +40)
 contrast: 1.5배 (hsv의 s채널에 1.5배)
-
-사용법:
-    # 개별 날짜 지정
-    python bolt_aug_for_resnet.py \
-        --target_dir 0616 0718 0721 0725 0728 0729 0731 0801 0804 0805 0806 \
-        --subfolders frontfender hood trunklid \
-        --set_types bad good
-    
-    # 날짜 범위 지정
-    python AugforBolt_crop.py \
-        --date-range 0807 1013 \
-        --subfolders frontfender hood trunklid \
-        --set_types bad
-    
-    # 일반 폴더 + OBB 폴더 (별도 날짜 범위)
-    python AugforBolt_crop.py \
-        --date-range 0807 1109 \
-        --obb-date-range 0616 0806 \
-        --subfolders frontfender hood trunklid \
-        --set_types bad good
-
-
-    
-
-옵션 설명:
-    --target_dir: 대상 폴더 경로들 (기본값: 현재 디렉토리)
-    --subfolders: 처리할 서브폴더들 (기본값: hood_revised trunk_revised front_revised)
-    --set_types: 처리할 set 타입들 (기본값: bad good)
 
 
 폴더 구조:

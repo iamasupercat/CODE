@@ -1,31 +1,26 @@
 #!/usr/bin/env python3
 """
-YOLO OBB(Oriented Bounding Box) 라벨을 이용하여 회전된 객체를 crop하는 스크립트
+앞도어 크롭에 사용
+- 앞도어 라벨링에는 회전을 적용하였음
 
-[로직 설명]
-- correct_orientation_constrained: 
-  사용자가 지정한 로직 사용 (w, h 길이를 기준으로 가로/세로 판단 후 방향 보정)
-- clean 옵션: 
-  실행 시 지정된 폴더 내의 기존 결과물(crop_*, debug_crop) 삭제
 
+# 이 밖의 자세한 사용법은 USAGE.md 파일을 참조하세요.
 사용법:
-    # 단일 날짜 지정
-    python CropforOBB.py \
-        --target_dir 0805 \
-        --mode door \
-        --clean
-
-    # 날짜 범위 지정 (일반 폴더)
-    python CropforOBB.py \
-        --date-range 0807 1103 \
-        --mode door
-
-    # 일반 폴더 + OBB 폴더 (별도 날짜 범위)
     python CropforOBB.py \
         --date-range 0807 1109 \
         --obb-date-range 0616 0806 \
         --mode door \
         --clean
+
+
+
+
+[로직 설명]
+YOLO OBB(Oriented Bounding Box) 라벨을 이용하여 회전된 객체를 crop하는 스크립트
+- correct_orientation_constrained: 
+  사용자가 지정한 로직 사용 (w, h 길이를 기준으로 가로/세로 판단 후 방향 보정)
+- clean 옵션: 
+  실행 시 지정된 폴더 내의 기존 결과물(crop_*, debug_crop) 삭제
 """
 
 import os

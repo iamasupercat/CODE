@@ -1,19 +1,11 @@
 #!/usr/bin/env python3
 """
-크롭된 이미지에 데이터 증강을 적용하는 스크립트
-6가지 증강 기법을 적용하여 각 이미지당 6개의 증강된 이미지를 생성합니다.
-(rot, flip, noise, gray, bright, contrast)
-볼트와의 차이점) rot: 랜덤 회전 (-10° ~ +10°)
+크롭된 앞도어 이미지에 데이터 증강을 적용하는 스크립트
 
 
+
+# 이 밖의 자세한 사용법은 USAGE.md 파일을 참조하세요.
 사용법:
-    # 개별 날짜 지정
-    python AugforDoor_crop.py \
-        --target_dir 0616 0721 0728 0729 0731 0801 0804 0805 0806 \
-        --subfolders frontdoor \
-        --set_types good bad
-
-    # 날짜 범위 지정
     python AugforDoor_crop.py \
         --date-range 0807 1103 \
         --subfolders frontdoor \
@@ -25,10 +17,7 @@
     --subfolders frontdoor \
     --set_types good bad
 
-옵션 설명:
-    --target_dir: 대상 폴더 경로들 (기본값: 현재 디렉토리)
-    --subfolders: 처리할 서브폴더들 (기본값: frontdoor)
-    --set_types: 처리할 set 타입들 (기본값: bad good)
+
 
 
 폴더 구조:

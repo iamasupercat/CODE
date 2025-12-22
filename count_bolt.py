@@ -1,14 +1,12 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 '''
-볼트 개수를 세는 스크립트
-labels 폴더의 txt 파일에서 클래스 0 또는 1인 경우를 볼트로 카운팅
+볼트 개수를 세는 스크립트 (라벨링 번호 0 또는 1인 경우를 볼트로 카운팅)
 
-단일 날짜, 단일 부위: python count_bolt.py 0718 hood
-단일 날짜, 여러 부위: python count_bolt.py 0718 hood trunklid frontfender
-기간별, 단일 부위: python count_bolt.py 0718 0725 hood
-기간별, 여러 부위: python count_bolt.py 0718 0725 hood trunklid frontfender
+
+
+
+# 이 밖의 자세한 사용법은 USAGE.md 파일을 참조하세요.
+사용법:
+    python count_bolt.py 0718 0725 hood trunklid frontfender
 '''
 
 import os

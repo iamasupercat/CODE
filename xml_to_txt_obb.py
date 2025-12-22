@@ -1,36 +1,12 @@
 #!/usr/bin/env python3
 """
-XML 라벨 파일을 YOLO OBB 형식 TXT 파일로 변환하는 스크립트 (labelImg2 형식 적용)
+XML 라벨 파일을 YOLO OBB 형식 TXT 파일로 변환하는 스크립트 (labelImg2로 작업한 라벨을 변환)
 
-XML 형식:
-    <size>
-        <width>3000</width>
-        <height>4000</height>
-    </size>
-    <object>
-        <name>bolt_frontside</name>
-        <robndbox>
-            <cx>1786.0</cx>
-            <cy>1669.0</cy>
-            <w>138.0</w>
-            <h>120.0</h>
-            <angle>0.0</angle>
-        </robndbox>
-    </object>
 
-YOLO OBB 형식:
-    class_id x_center y_center width height angle
-    (모든 값은 0~1 범위로 정규화)
 
+# 이 밖의 자세한 사용법은 USAGE.md 파일을 참조하세요.
 사용법:
-    # 단일 폴더 처리
-    python xml_to_txt_obb.py /home/work/datasets/OBB/0718/hood/good/labels
-
-    # 날짜 범위로 처리
-    python xml_to_txt_obb.py --date-range 0718 0718 --subfolder hood --category good
-
-    # OBB 폴더 전체 처리
-    python xml_to_txt_obb.py --date-range 0616 0718 --subfolder hood frontdoor --category good bad
+    python xml_to_txt_obb.py --date-range 0718 0718 --subfolder hood --category good bad
 """
 
 import os
