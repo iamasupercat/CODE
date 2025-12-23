@@ -117,12 +117,12 @@ def parse_obb_label(line):
     # 포맷 자동 감지
     if len(parts) == 6:
         # 원본 포맷: class x y w h angle
-    x = float(parts[1])
-    y = float(parts[2])
-    w = float(parts[3])
-    h = float(parts[4])
-    angle = float(parts[5])
-    return cls, x, y, w, h, angle
+        x = float(parts[1])
+        y = float(parts[2])
+        w = float(parts[3])
+        h = float(parts[4])
+        angle = float(parts[5])
+        return cls, x, y, w, h, angle
     elif len(parts) == 9:
         # 변환된 포맷: class x1 y1 x2 y2 x3 y3 x4 y4
         x1, y1 = float(parts[1]), float(parts[2])
@@ -382,10 +382,10 @@ def get_defect_type_from_excel(df, image_filename):
     
     # 위/아래에서 못 찾으면 전체에서 검색 (fallback)
     if matching_row is None:
-    matching_rows = df[
-            (df_keys == match_key) &
-        (df['상단'].notna() | df['중간'].notna() | df['하단'].notna())
-    ]
+        matching_rows = df[
+            (df_keys == match_key)
+            & (df['상단'].notna() | df['중간'].notna() | df['하단'].notna())
+        ]
         if len(matching_rows) > 0:
             matching_row = matching_rows.iloc[0]
     
@@ -564,7 +564,7 @@ def process_door_mode(base_dir, excel_path=None):
                 defect_types, needs_review, null_areas = get_defect_type_from_excel(df, img_name)
                 if needs_review:
                     review_needed.append(img_name)
-                    if defect_types is None:
+                if defect_types is None:
                     print(f"[경고] 엑셀에서 매칭되는 데이터가 없습니다: {img_name} (이미지 건너뜀)")
                     continue
                 
@@ -597,7 +597,7 @@ def process_door_mode(base_dir, excel_path=None):
                     folder_num = defect_types[cls_name]  # 엑셀에서 가져온 하위폴더 번호
                 else:
                     # good일 때만 0에 넣기 허용
-                folder_num = 0
+                    folder_num = 0
                 
                 crop_filename = f"{os.path.splitext(img_name)[0]}_{cls}.jpg"
                 crop_path = os.path.join(base_dir, f'crop_{cls_name}', str(folder_num), crop_filename)
@@ -738,7 +738,7 @@ def main():
     parser.add_argument('--clean', action='store_true', help='실행 전 기존 crop, debug 폴더 삭제')
     args = parser.parse_args()
     
-    base_path = "/home/work/datasets"
+    base_path = "/home/ciw/work/datasets"
     obb_base_path = os.path.join(base_path, "OBB")
     
     # 일반 폴더 수집

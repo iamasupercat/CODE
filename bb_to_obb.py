@@ -172,7 +172,7 @@ def main():
     mode = 'bb' if args.to_bb else 'obb'
     mode_name = 'BB' if mode == 'bb' else 'OBB'
 
-    base_path = "/home/work/datasets"
+    base_path = "/home/ciw/work/datasets"
     start_date = "0718"
     end_date = "0806"
 

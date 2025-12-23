@@ -15,7 +15,7 @@ quality는 폴더명(bad / good)을 기준으로 판단합니다.
 import os
 from pathlib import Path
 
-BASE_PATH = Path("/home/work/datasets")
+BASE_PATH = Path("/home/ciw/work/datasets")
 DATES = ["1105", "1106", "1128"]
 
 BOLT_PARTS = ["frontfender", "hood", "trunklid"]
@@ -48,7 +48,7 @@ def collect_images(date: str, part: str):
 
 
 def main():
-    txt_dir = Path("/home/work/datasets/CODE/TXT")
+    txt_dir = Path("/home/ciw/work/datasets/CODE/TXT")
     txt_dir.mkdir(parents=True, exist_ok=True)
 
     bolt_out = txt_dir / "finaltest_Bolt.txt"

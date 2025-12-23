@@ -7,15 +7,10 @@
 # 이 밖의 자세한 사용법은 USAGE.md 파일을 참조하세요.
 사용법:
     python AugforDoor_crop.py \
-        --date-range 0807 1103 \
+        --date-range 0807 1109 \
+        --obb-date-range 0616 0806 \
         --subfolders frontdoor \
-        --set_types bad
-    
-    python AugforDoor_crop.py \
-    --date-range 0807 1109 \
-    --obb-date-range 0616 0806 \
-    --subfolders frontdoor \
-    --set_types good bad
+        --set_types good bad
 
 
 
@@ -294,7 +289,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     # 날짜를 절대경로로 변환
-    base_path = "/home/work/datasets"
+    base_path = "/home/ciw/work/datasets"
     obb_base_path = os.path.join(base_path, "OBB")
 
     # 일반 폴더

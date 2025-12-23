@@ -311,9 +311,9 @@ def main():
         print("사용법: python debug_xml_txt.py <이미지_경로>")
         print("\n예시:")
         print("  # 절대 경로")
-        print("  python debug_xml_txt.py /home/work/datasets/OBB/0718/hood/good/images/good_9362_1_e97d8f94-e26c-455d-9c96-40a63f6a2c83.jpg")
+        print("  python debug_xml_txt.py /home/ciw/work/datasets/OBB/0718/hood/good/images/good_9362_1_e97d8f94-e26c-455d-9c96-40a63f6a2c83.jpg")
         print("\n  # 상대 경로 (datasets 폴더에서 실행)")
-        print("  cd /home/work/datasets")
+        print("  cd /home/ciw/work/datasets")
         print("  python CODE/debug_xml_txt.py OBB/0718/hood/good/images/good_9362_1_e97d8f94-e26c-455d-9c96-40a63f6a2c83.jpg")
         sys.exit(1)
     

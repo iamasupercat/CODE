@@ -7,7 +7,11 @@
 # 이 밖의 자세한 사용법은 USAGE.md 파일을 참조하세요.
 사용법:
     python CropforBB.py \
-        --date-range 0807 1109\
+        --date-range 0616 1109 \
+        --clean
+
+python CropforBB.py \
+        --obb-date-range 0616 0806 \
         --clean
 
 
@@ -28,8 +32,6 @@ YOLO OBB 라벨을 BB처럼 처리하여 볼트를 크롭하는 스크립트
 
 import os
 import argparse
-import cv2
-import numpy as np
 from PIL import Image, ImageDraw, ImageOps
 import math
 import shutil
@@ -293,25 +295,25 @@ def process_bolt_mode(base_dir):
         
         try:
             # PIL로 이미지 로드 (EXIF 보정 포함)
-        img = Image.open(img_path)
+            img = Image.open(img_path)
             img = ImageOps.exif_transpose(img)
-        img_width, img_height = img.size
-        debug_img = img.copy()
-        draw = ImageDraw.Draw(debug_img)
+            img_width, img_height = img.size
+            debug_img = img.copy()
+            draw = ImageDraw.Draw(debug_img)
             
             labels_data = []
             
             with open(actual_label_path, 'r') as f:
                 for line_num, line in enumerate(f, 1):
-                if not line.strip():
-                    continue
+                    if not line.strip():
+                        continue
                     parsed = parse_obb_label(line)
                     if parsed is None:
-                    continue
+                        continue
                     cls, x, y, w, h, angle = parsed
                     # parse_obb_label에서 이미 정규화된 좌표를 반환하므로 그대로 사용
                     if cls not in [0, 1]:
-                    continue
+                        continue
                     
                     # 클래스가 0,1인데 angle이 0이 아니면 문제 파일로 기록하고 크롭하지 않음
                     if abs(angle) > 1e-6:
@@ -321,7 +323,7 @@ def process_bolt_mode(base_dir):
                         bbox_color = 'yellow'
                         draw_obb_bbox(draw, x, y, w, h, angle, img_width, img_height, 
                                      outline=bbox_color, width_line=3, cls=cls)
-                    continue
+                        continue
                     
                     # angle이 0인 경우만 labels_data에 추가하여 크롭 진행
                     labels_data.append((cls, x, y, w, h, angle, line_num))
@@ -348,9 +350,9 @@ def process_bolt_mode(base_dir):
                     # 실제 크롭된 영역도 파란색으로 표시
                     draw.rectangle([x1, y1, x2, y2], outline='blue', width=2)
             
-        # 디버그 이미지 저장
-        debug_save_path = os.path.join(debug_dir, img_name)
-        debug_img.save(debug_save_path)
+            # 디버그 이미지 저장
+            debug_save_path = os.path.join(debug_dir, img_name)
+            debug_img.save(debug_save_path)
 
         except Exception as e:
             print(f"오류: {img_path}, {e}")
@@ -373,7 +375,7 @@ def main():
                         help='실행 전 기존 crop_bolt, crop_bolt_aug, debug_crop 폴더 삭제')
     args = parser.parse_args()
     
-    base_path = "/home/work/datasets"
+    base_path = "/home/ciw/work/datasets"
     obb_base_path = os.path.join(base_path, "OBB")
     
     # 일반 폴더 수집

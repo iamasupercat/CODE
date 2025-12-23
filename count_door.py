@@ -108,7 +108,7 @@ def process_frontdoor_excel(excel_path):
 
 def process_date_range(start_date, end_date):
     """지정된 날짜 범위의 frontdoor 데이터를 처리"""
-    base_dir = "/home/work/datasets"
+    base_dir = "/home/ciw/work/datasets"
     
     # 전체 통계
     total_counts = {

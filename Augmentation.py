@@ -6,8 +6,8 @@
 
 # 이 밖의 자세한 사용법은 USAGE.md 파일을 참조하세요.
 사용법:
-    python augmentation.py --date-range 0616 1109 \
-    --subfolder frontdoor
+    python Augmentation.py --date-range 0616 1109 \
+    --subfolder frontdoor frontfender hood trunklid
 
 
 
@@ -359,12 +359,12 @@ def main():
                         help='날짜 구간 선택 (MMDD 또는 YYYYMMDD). 예: --date-range 0715 0805')
     parser.add_argument('--subfolder', nargs='+', help='Specific subfolders to process (e.g., frontdoor hood)')
     parser.add_argument('--obb-only', action='store_true', 
-                        help='OBB 폴더만 처리 (기본 경로는 제외하고 /home/work/datasets/OBB/ 아래만 검색)')
+                        help='OBB 폴더만 처리 (기본 경로는 제외하고 /home/ciw/work/datasets/OBB/ 아래만 검색)')
     
     args = parser.parse_args()
     
     # 날짜를 절대경로로 변환
-    base_path = "/home/work/datasets"
+    base_path = "/home/ciw/work/datasets"
     if args.date_range:
         start, end = args.date_range
         if args.obb_only:

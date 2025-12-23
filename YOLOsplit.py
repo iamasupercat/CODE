@@ -334,7 +334,7 @@ def main():
                         help='good용 일반 폴더 날짜 구간 (MMDD 또는 YYYYMMDD)')
     args = parser.parse_args()
 
-    base_path = "/home/work/datasets"
+    base_path = "/home/ciw/work/datasets"
     
     # 일반 폴더 처리 (기본 범위)
     if args.date_range:

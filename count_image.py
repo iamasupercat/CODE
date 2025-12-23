@@ -42,7 +42,7 @@ def count_images_in_folder(folder_path):
 
 def count_data_by_date_and_part(date, part):
     """지정된 날짜와 부위의 데이터 개수를 세는 함수"""
-    base_dir = "/home/work/datasets"
+    base_dir = "/home/ciw/work/datasets"
     target_dir = os.path.join(base_dir, date, part)
     
     if not os.path.exists(target_dir):
@@ -81,7 +81,7 @@ def count_data_by_date_and_part(date, part):
 
 def count_data_by_period(start_date, end_date, parts):
     """지정된 기간과 부위들의 모든 데이터 개수를 합산하는 함수"""
-    base_dir = "/home/work/datasets"
+    base_dir = "/home/ciw/work/datasets"
     
     # parts가 문자열이면 리스트로 변환
     if isinstance(parts, str):

@@ -388,7 +388,7 @@ YOLO와 ResNet 훈련용 split을 동일한 기준으로 동시에 생성하는 
 **사용법:**
 ```bash
 # 기본 사용
-python bolt_split.py \
+python "[수정]bolt_split.py" \
     --folders 0616 0718 0721 0725 0728 0729 0731 0801 0804 0805 0806 \
     --subfolders frontfender hood trunklid \
     --name bolt
@@ -416,7 +416,7 @@ python bolt_split.py \
 **사용법:**
 ```bash
 # 기본 사용
-python sealing_split.py \
+python "[수정]sealing_split.py" \
     --folders 0616 0721 0728 0729 0731 0801 0804 0805 0806 \
     --subfolders frontdoor \
     --name frontdoor
@@ -536,17 +536,17 @@ python count_bolt.py 0718 0725 hood trunklid frontfender
 
 ---
 
-### 13. count_frontdoor_classes.py - 도어 클래스 개수 세기
+### 13. count_door.py - 도어 클래스 개수 세기
 
 frontdoor 폴더에서 frontdoor.xlsx 파일을 읽어서 상단, 중간, 하단 각각의 클래스 개수와 퍼센테이지를 출력합니다.
 
 **사용법:**
 ```bash
 # 단일 날짜
-python count_frontdoor_classes.py 1031
+python count_door.py 1031
 
 # 기간별
-python count_frontdoor_classes.py 0807 1109
+python count_door.py 0807 1109
 ```
 
 **인수:**
@@ -635,10 +635,10 @@ Augmentation 결과를 시각화하는 디버그 스크립트입니다.
 **사용법:**
 ```bash
 # 절대 경로
-python debug_aug.py /home/work/datasets/0718/frontfender/bad/images/bad_0216_1_1_5a269cdf-35fe-4259-a086-7ccab92112ae.jpg
+python debug_aug.py /home/ciw/work/datasets/0718/frontfender/bad/images/bad_0216_1_1_5a269cdf-35fe-4259-a086-7ccab92112ae.jpg
 
 # 상대 경로 (datasets 폴더에서 실행)
-cd /home/work/datasets
+cd /home/ciw/work/datasets
 python CODE/debug_aug.py 0718/frontfender/bad/images/bad_0216_1_1_5a269cdf-35fe-4259-a086-7ccab92112ae.jpg
 ```
 
@@ -659,10 +659,10 @@ CropforBB.py의 크롭 결과를 시각화하는 디버그 스크립트입니다
 **사용법:**
 ```bash
 # 절대 경로
-python debug_crop.py /home/work/datasets/1010/frontfender/good/images/good_8128_1_13_62c4b142-e159-4c33-9368-98c3502cc696.jpg
+python debug_crop.py /home/ciw/work/datasets/1010/frontfender/good/images/good_8128_1_13_62c4b142-e159-4c33-9368-98c3502cc696.jpg
 
 # 상대 경로
-cd /home/work/datasets
+cd /home/ciw/work/datasets
 python CODE/debug_crop.py 1010/trunklid/good/images/good_8128_1_13_62c4b142-e159-4c33-9368-98c3502cc696.jpg
 ```
 
@@ -686,10 +686,10 @@ XML → TXT 변환 결과를 시각화하는 디버그 스크립트입니다.
 **사용법:**
 ```bash
 # 절대 경로
-python debug_xml_txt.py /home/work/datasets/OBB/0718/hood/good/images/good_9362_1_e97d8f94-e26c-455d-9c96-40a63f6a2c83.jpg
+python debug_xml_txt.py /home/ciw/work/datasets/OBB/0718/hood/good/images/good_9362_1_e97d8f94-e26c-455d-9c96-40a63f6a2c83.jpg
 
 # 상대 경로
-cd /home/work/datasets
+cd /home/ciw/work/datasets
 python CODE/debug_xml_txt.py OBB/0718/hood/good/images/good_9362_1_e97d8f94-e26c-455d-9c96-40a63f6a2c83.jpg
 ```
 
@@ -705,14 +705,14 @@ python CODE/debug_xml_txt.py OBB/0718/hood/good/images/good_9362_1_e97d8f94-e26c
 
 ## 유틸리티 스크립트
 
-### 19. make_finaltest_txt.py - 최종 테스트 txt 생성
+### 19. [삭제]make_finaltest_txt.py - 최종 테스트 txt 생성
 
 특정 날짜의 이미지 경로를 수집하여 최종 테스트용 txt 파일을 생성합니다.
 yolo, dino 통합 split 코드가 아직 없어 임시적으로 사용한 스크립트 (삭제될 예정)
 
 **사용법:**
 ```bash
-python make_finaltest_txt.py
+python "[삭제]make_finaltest_txt.py"
 ```
 
 **처리 날짜:** 1105, 1106, 1128
@@ -732,8 +732,8 @@ python make_finaltest_txt.py
 - **8자리 (YYYYMMDD)**: 예: `20240616`, `20241109`
 
 ### 기본 경로
-- 일반 폴더: `/home/work/datasets/{날짜}/`
-- OBB 폴더: `/home/work/datasets/OBB/{날짜}/`
+- 일반 폴더: `/home/ciw/work/datasets/{날짜}/`
+- OBB 폴더: `/home/ciw/work/datasets/OBB/{날짜}/`
 
 ### 출력 디렉토리
 - 대부분의 스크립트는 `TXT/` 디렉토리에 결과 파일을 저장합니다.
@@ -779,7 +779,7 @@ python make_finaltest_txt.py
 
 ### 스크립트 실행 권한
 ```bash
-chmod +x /home/work/datasets/CODE/*.py
+chmod +x /home/ciw/work/datasets/CODE/*.py
 ```
 
 ### Python 경로 확인

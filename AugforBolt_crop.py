@@ -7,14 +7,14 @@
 # 이 밖의 자세한 사용법은 USAGE.md 파일을 참조하세요.
 사용법:
     python AugforBolt_crop.py \
-        --date-range 0807 1013 \
+        --date-range 0616 1109 \
         --subfolders frontfender hood trunklid \
-        --set_types bad
+        --set_types bad good
     
     python AugforBolt_crop.py \
         --obb-date-range 0616 0806 \
         --subfolders frontfender hood trunklid \
-        --set_types good
+        --set_types bad good
 
 
     
@@ -228,7 +228,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     # 날짜를 절대경로로 변환
-    base_path = "/home/work/datasets"
+    base_path = "/home/ciw/work/datasets"
     obb_base_path = os.path.join(base_path, "OBB")
     
     # 일반 폴더 수집

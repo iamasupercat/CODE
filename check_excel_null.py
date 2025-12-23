@@ -143,7 +143,7 @@ def main():
     
     args = parser.parse_args()
     
-    base_path = "/home/work/datasets"
+    base_path = "/home/ciw/work/datasets"
     obb_base_path = os.path.join(base_path, "OBB")
     
     # 일반 폴더 수집

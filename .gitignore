@@ -1,6 +1,7 @@
 # 이미지, 라벨링 파일 무시
 *.xml
 *.txt
+!requirements.txt
 *.json
 *.csv
 *.xlsx

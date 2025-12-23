@@ -216,7 +216,7 @@ def main():
     
     args = parser.parse_args()
     
-    base_path = "/home/work/datasets"
+    base_path = "/home/ciw/work/datasets"
     
     if args.folder:
         # 단일 폴더 처리

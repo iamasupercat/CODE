@@ -365,12 +365,12 @@ def collect_door_images(base_folders, subfolder_names, original_folders, merge_c
                             crop_file_path = os.path.join(subdir_path, crop_filename)
                             
                             if os.path.exists(crop_file_path):
-                                if base_folder.startswith('/home/work/datasets/'):
-                                    folder_name = base_folder[len('/home/work/datasets/'):]
+                                if base_folder.startswith('/home/ciw/work/datasets/'):
+                                    folder_name = base_folder[len('/home/ciw/work/datasets/'):]
                                 else:
                                     folder_name = os.path.basename(base_folder.rstrip(os.sep))
                                 
-                                absolute_path = f"/home/work/datasets/{folder_name}/{subfolder_name}/{quality}/{crop_folder}/{subdir}/{crop_filename}"
+                                absolute_path = f"/home/ciw/work/datasets/{folder_name}/{subfolder_name}/{quality}/{crop_folder}/{subdir}/{crop_filename}"
                                 
                                 # 라벨 결정
                                 original_label = int(subdir)  # 0, 1, 2, 3
@@ -405,12 +405,12 @@ def collect_door_images(base_folders, subfolder_names, original_folders, merge_c
                                     crop_aug_file_path = os.path.join(subdir_path, crop_aug_filename)
                                     
                                     if os.path.exists(crop_aug_file_path):
-                                        if base_folder.startswith('/home/work/datasets/'):
-                                            folder_name = base_folder[len('/home/work/datasets/'):]
+                                        if base_folder.startswith('/home/ciw/work/datasets/'):
+                                            folder_name = base_folder[len('/home/ciw/work/datasets/'):]
                                         else:
                                             folder_name = os.path.basename(base_folder.rstrip(os.sep))
                                         
-                                        absolute_path = f"/home/work/datasets/{folder_name}/{subfolder_name}/{quality}/{crop_folder}/{subdir}/{crop_aug_filename}"
+                                        absolute_path = f"/home/ciw/work/datasets/{folder_name}/{subfolder_name}/{quality}/{crop_folder}/{subdir}/{crop_aug_filename}"
                                         
                                         # 라벨 결정
                                         original_label = int(subdir)
@@ -584,7 +584,7 @@ def main():
     
     args = parser.parse_args()
     
-    base_path = "/home/work/datasets"
+    base_path = "/home/ciw/work/datasets"
     
     # 일반 폴더
     if args.date_range:
