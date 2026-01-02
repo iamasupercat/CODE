@@ -14,6 +14,12 @@
 *.ico
 *.webp
 
+# Python 가상환경 무시
+venv/
+env/
+ENV/
+.venv/
+
 # 특정 OS에서 자동으로 생성되는 파일 무시
 .DS_Store
 Thumbs.db
