@@ -1,9 +1,40 @@
-# 데이터셋 처리 스크립트 사용법 가이드
+# 데이터셋 처리 스크립트 사용 가이드
 
 이 문서는 `CODE` 디렉토리에 있는 모든 스크립트의 사용법을 정리한 가이드입니다.
 
 ---
 
+## 📦 환경 설정
+
+### 1. 가상환경 생성 및 활성화
+
+```bash
+cd /home/ciw/work/datasets/CODE
+
+# # 가상환경 생성 (한 번만) <- 가상환경은 이미 생성해둠
+# python3 -m venv venv
+
+# 가상환경 활성화 (매번 실행 전에)
+source venv/bin/activate
+```
+
+<!-- (가상환경에 이미 설치되어있음)
+### 2. 패키지 설치
+
+```bash
+# requirements.txt 기반으로 모든 패키지 설치
+pip install -r requirements.txt
+```
+
+**필요한 패키지:**
+- `ultralytics` - YOLOv11 학습용
+- `torch`, `torchvision` - PyTorch
+- `Pillow`, `opencv-python` - 이미지 처리
+- `pyyaml`, `tqdm`, `numpy`, `matplotlib`, `seaborn`, `plotly`, `pandas`, `scikit-learn` - 유틸리티 -->
+
+---
+
+## 🚀 스크립트 사용법
 ## 목차
 
 1. [이미지 크롭 스크립트](#이미지-크롭-스크립트)
@@ -200,11 +231,11 @@ python AugforBolt_crop.py \
 
 ### 5. AugforDoor_crop.py - 도어 크롭 이미지 증강
 
-크롭된 도어 이미지에 3가지 증강 기법을 적용하는 스크립트입니다.
+크롭된 도어 이미지에 증강 기법을 적용하는 스크립트입니다.
 
 **기능:**
-- 각 이미지당 3개의 증강된 이미지 생성
-- 증강 기법: flip, noise, invert
+- 각 이미지당 증강된 이미지 생성
+- 증강 기법: rot, flip, noise, gray, bright, contrast
 - 볼트와의 차이점: rot 범위가 -10° ~ +10° (볼트는 -180° ~ +180°)
 
 **사용법:**
@@ -243,9 +274,12 @@ python AugforDoor_crop.py \
 - `{날짜}/{subfolder}/{bad|good}/crop_low_aug/{0|1|2|3}/`
 
 **증강 기법:**
+- `_rot.jpg`: 랜덤 회전 (-10° ~ +10°)
 - `_flip.jpg`: 수평 뒤집기
-- `_noise.jpg`: 가우시안 노이즈
-- `_invert.jpg`: 색상 반전
+- `_noise.jpg`: 가우시안 노이즈 추가
+- `_gray.png`: 그레이스케일 변환
+- `_bright.jpg`: 밝기 증가 (+40)
+- `_contrast.jpg`: 대비 증가 (1.5배)
 
 ---
 
@@ -729,14 +763,13 @@ python "[삭제]make_finaltest_txt.py"
 
 ### 날짜 형식
 - **4자리 (MMDD)**: 예: `0616`, `1109`
-- **8자리 (YYYYMMDD)**: 예: `20240616`, `20241109`
 
 ### 기본 경로
 - 일반 폴더: `/home/ciw/work/datasets/{날짜}/`
 - OBB 폴더: `/home/ciw/work/datasets/OBB/{날짜}/`
 
 ### 출력 디렉토리
-- 대부분의 스크립트는 `TXT/` 디렉토리에 결과 파일을 저장합니다.
+- split 스크립트는 `TXT/` 디렉토리에 결과 파일을 저장합니다.
 - 디렉토리가 없으면 자동으로 생성됩니다.
 
 ### 데이터 누수 방지
