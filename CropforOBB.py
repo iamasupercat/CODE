@@ -323,20 +323,20 @@ def _convert_bad_to_match_name(name: str) -> str:
 
 def get_defect_type_from_excel(df, image_filename):
     """
-    엑셀에서 이미지파일명으로 직접 매칭하여 하위폴더 번호(0,1,2,3)를 가져옵니다.
+    엑셀에서 이미지파일명으로 직접 매칭하여 하위폴더 번호를 가져옵니다.
     
     - bad 이미지 파일명: bad_ 접두어 제거 + 두 번째 숫자를 2로 변경한 이름으로 매칭
       예: 'bad_3542_1_6_...' → '3542_2_6_...'
     - bad 행 기준으로 바로 위/아래 행을 먼저 확인 (시퀀셜 검색 X)
-    - 엑셀의 '상단' 열 → high 영역의 하위폴더 번호 (0,1,2,3)
-    - 엑셀의 '중간' 열 → mid 영역의 하위폴더 번호 (0,1,2,3)
-    - 엑셀의 '하단' 열 → low 영역의 하위폴더 번호 (0,1,2,3)
+    - 엑셀의 '상단' 열 → high 영역의 하위폴더 번호 (1,2,3,4)
+    - 엑셀의 '중간' 열 → mid 영역의 하위폴더 번호 (1,2,3,4)
+    - 엑셀의 '하단' 열 → low 영역의 하위폴더 번호 (1,2,3,4)
     
-    주의: 엑셀에 저장된 값이 1,2,3,4라면 -1을 해서 0,1,2,3으로 변환합니다.
+    주의: 엑셀에 저장된 값(1,2,3,4)을 그대로 사용합니다.
     
     반환:
-        (defect_dict 또는 None, needs_review: bool)
-        defect_dict 예: {'high': 0, 'mid': 1, 'low': 2}
+        (defect_dict 또는 None, needs_review: bool, null_areas: list)
+        defect_dict 예: {'high': 1, 'mid': 2, 'low': 3}
     """
     if df is None:
         return None, False, []
@@ -413,7 +413,7 @@ def get_defect_type_from_excel(df, image_filename):
                     print(f"    - {name}")
         return None, False, []
     
-    # 엑셀의 상단/중간/하단 값을 가져와서 하위폴더 번호(0,1,2,3)로 변환
+    # 엑셀의 상단/중간/하단 값을 가져와서 하위폴더 번호로 사용
     high_val = matching_row['상단']
     mid_val = matching_row['중간']
     low_val = matching_row['하단']
@@ -423,19 +423,19 @@ def get_defect_type_from_excel(df, image_filename):
     
     # 상단 → high 영역의 하위폴더 번호
     if pd.notna(high_val): 
-        result['high'] = int(high_val) - 1  # 엑셀 값이 1,2,3,4라면 0,1,2,3으로 변환
+        result['high'] = int(high_val)  # 엑셀 값 그대로 사용 (1,2,3,4)
     else:
         null_areas.append('high')
     
     # 중간 → mid 영역의 하위폴더 번호
     if pd.notna(mid_val): 
-        result['mid'] = int(mid_val) - 1
+        result['mid'] = int(mid_val)  # 엑셀 값 그대로 사용 (1,2,3,4)
     else:
         null_areas.append('mid')
     
     # 하단 → low 영역의 하위폴더 번호
     if pd.notna(low_val): 
-        result['low'] = int(low_val) - 1
+        result['low'] = int(low_val)  # 엑셀 값 그대로 사용 (1,2,3,4)
     else:
         null_areas.append('low')
     
@@ -488,11 +488,11 @@ def clean_directory(target_dir):
 
 def process_door_mode(base_dir, excel_path=None):
     """
-    Door 모드: 앞도어 이미지를 크롭하여 high/mid/low 폴더의 하위폴더(0,1,2,3)에 저장
+    Door 모드: 앞도어 이미지를 크롭하여 high/mid/low 폴더의 하위폴더(0,1,2,3,4)에 저장
     
     - txt 파일의 라벨링 번호(cls): high/mid/low 구분에만 사용 (0:high, 1:mid, 2:low)
-    - 하위폴더(0,1,2,3) 결정:
-      * bad일 때: 엑셀 파일의 '상단'/'중간'/'하단' 열 값을 사용 (반드시 필요)
+    - 하위폴더 결정:
+      * bad일 때: 엑셀 파일의 '상단'/'중간'/'하단' 열 값을 그대로 사용 (1,2,3,4)
       * good일 때: 항상 0에 저장
     """
     images_dir = os.path.join(base_dir, 'images')
@@ -506,7 +506,8 @@ def process_door_mode(base_dir, excel_path=None):
     os.makedirs(debug_dir, exist_ok=True)
     for cls_name in ['high', 'mid', 'low']:
         crop_dir = os.path.join(base_dir, f'crop_{cls_name}')
-        for i in range(4):
+        # good: 0, bad: 1,2,3,4 사용
+        for i in range(5):
             os.makedirs(os.path.join(crop_dir, str(i)), exist_ok=True)
     
     df = None
@@ -583,9 +584,9 @@ def process_door_mode(base_dir, excel_path=None):
                 # 하위폴더(0,1,2,3) 결정은 txt의 cls가 아니라 엑셀의 상단/중간/하단 값을 사용
                 cls_name = cls_names[cls]  # 0→'high', 1→'mid', 2→'low'
                 
-                # 하위폴더 번호 결정 (0,1,2,3)
+                # 하위폴더 번호 결정 (bad: 1,2,3,4 / good: 0)
                 if is_bad:
-                    # bad일 때는 반드시 엑셀에서 가져온 값 사용
+                    # bad일 때는 반드시 엑셀에서 가져온 값 사용 (1,2,3,4)
                     # 엑셀의 '상단' → high, '중간' → mid, '하단' → low
                     # null인 경우는 크롭하지 않음
                     if cls_name in null_areas:

@@ -22,69 +22,51 @@
     │   │   ├── images/          # 원본 이미지들
     │   │   ├── labels/          # YOLO 라벨 파일들
     │   │   ├── crop_high/        
-    │   │   │  ├──0/       # 출고실링(양품)
     │   │   │  ├──1/       # 실링없음
     │   │   │  ├──2/       # 작업실링
-    │   │   │  └──3/       # 테이프실링
+    │   │   │  ├──3/       # 테이프실링
+    │   │   │  └──4/       # 기타
     │   │   ├── crop_mid/        
-    │   │   │  ├──0/       # 출고실링(양품)
     │   │   │  ├──1/       # 실링없음
     │   │   │  ├──2/       # 작업실링
-    │   │   │  └──3/       # 테이프실링
+    │   │   │  ├──3/       # 테이프실링
+    │   │   │  └──4/       # 기타
     │   │   ├── crop_low/        
-    │   │   │  ├──0/       # 출고실링(양품)
     │   │   │  ├──1/       # 실링없음
     │   │   │  ├──2/       # 작업실링
-    │   │   │  └──3/       # 테이프실링
+    │   │   │  ├──3/       # 테이프실링
+    │   │   │  └──4/       # 기타
     │   │   ├── crop_high_aug/        
-    │   │   │  ├──0/       # 출고실링(양품)_aug
     │   │   │  ├──1/       # 실링없음_aug
     │   │   │  ├──2/       # 작업실링_aug
-    │   │   │  └──3/       # 테이프실링_aug
+    │   │   │  ├──3/       # 테이프실링_aug
+    │   │   │  └──4/       # 기타_aug
     │   │   ├── crop_mid_aug/        
-    │   │   │  ├──0/       # 출고실링(양품)_aug
     │   │   │  ├──1/       # 실링없음_aug
     │   │   │  ├──2/       # 작업실링_aug
-    │   │   │  └──3/       # 테이프실링_aug
+    │   │   │  ├──3/       # 테이프실링_aug
+    │   │   │  └──4/       # 기타_aug
     │   │   ├── crop_low_aug/        
-    │   │   │  ├──0/       # 출고실링(양품)_aug
     │   │   │  ├──1/       # 실링없음_aug
     │   │   │  ├──2/       # 작업실링_aug
-    │   │   │  └──3/       # 테이프실링_aug
+    │   │   │  ├──3/       # 테이프실링_aug
+    │   │   │  └──4/       # 기타_aug
     │   │   └── debug_crop/      # 디버그용 이미지들 (출력)
     │   └── good/
     │       ├── images/          # 원본 이미지들
     │       ├── labels/          # YOLO 라벨 파일들
     │       ├── crop_high/        
-    │       │  ├──0/       # 출고실링(양품)
-    │       │  ├──1/       # 실링없음
-    │       │  ├──2/       # 작업실링
-    │       │  └──3/       # 테이프실링
+    │       │  └──0/       # 출고실링(양품)
     │       ├── crop_mid/        
-    │       │  ├──0/       # 출고실링(양품)
-    │       │  ├──1/       # 실링없음
-    │       │  ├──2/       # 작업실링
-    │       │  └──3/       # 테이프실링
+    │       │  └──0/       # 출고실링(양품)
     │       ├── crop_low/        
-    │       │  ├──0/       # 출고실링(양품)
-    │       │  ├──1/       # 실링없음
-    │       │  ├──2/       # 작업실링
-    │       │  └──3/       # 테이프실링
+    │       │  └──0/       # 출고실링(양품)
     │       ├── crop_high_aug/        
-    │       │  ├──0/       # 출고실링(양품)_aug
-    │       │  ├──1/       # 실링없음_aug
-    │       │  ├──2/       # 작업실링_aug
-    │       │  └──3/       # 테이프실링_aug
+    │       │  └──0/       # 출고실링(양품)_aug
     │       ├── crop_mid_aug/        
-    │       │  ├──0/       # 출고실링(양품)_aug
-    │       │  ├──1/       # 실링없음_aug
-    │       │  ├──2/       # 작업실링_aug
-    │       │  └──3/       # 테이프실링_aug
+    │       │  └──0/       # 출고실링(양품)_aug
     │       ├── crop_low_aug/        
-    │       │  ├──0/       # 출고실링(양품)_aug
-    │       │  ├──1/       # 실링없음_aug
-    │       │  ├──2/       # 작업실링_aug
-    │       │  └──3/       # 테이프실링_aug
+    │       │  └──0/       # 출고실링(양품)_aug
     │       └── debug_crop/      # 디버그용 이미지들 (출력)
 
 증강 기법:
@@ -189,9 +171,12 @@ def invert_color(img):
 
 # 증강 기법과 파일명 접미사 매핑
 audict = {
+    'rot': small_rotation,
     'flip': horizontal_flip,
     'noise': add_noise,
-    'invert': invert_color
+    'gray': to_grayscale,
+    'bright': increase_brightness,
+    'contrast': increase_contrast
 }
 
 # bad/good, crop_* 폴더 순회
@@ -213,8 +198,17 @@ def process_all(target_dirs, subfolders, set_types):
                         print(f"소스 디렉토리가 존재하지 않음: {src_base_dir}")
                         continue
                     
-                    # 0, 1, 2, 3 서브폴더 처리 (실링 클래스별)
-                    for subdir in ['0', '1', '2', '3']:
+                    # set_type에 따라 서브폴더 선택
+                    # good: 0만, bad: 1,2,3,4만
+                    if set_type == 'good':
+                        subdirs = ['0']
+                    elif set_type == 'bad':
+                        subdirs = ['1', '2', '3', '4']
+                    else:
+                        subdirs = ['0', '1', '2', '3']  # 기본값 (fallback)
+                    
+                    # 서브폴더 처리 (실링 클래스별)
+                    for subdir in subdirs:
                         src_dir = os.path.join(src_base_dir, subdir)
                         dst_dir = os.path.join(dst_base_dir, subdir)
                         
@@ -308,7 +302,7 @@ if __name__ == '__main__':
         start, end = args.obb_date_range
         obb_dirs = collect_date_range_folders(obb_base_path, start, end)
         print(f"OBB 폴더 날짜 구간: {start} ~ {end}")
-    elif args.obb-folders:
+    elif args.obb_folders:
         obb_dirs = [os.path.join(obb_base_path, date) for date in args.obb_folders]
 
     target_dirs = target_dirs + obb_dirs

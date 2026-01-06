@@ -5,8 +5,8 @@ YOLO 라벨 파일을 BB(5개 값)와 OBB(6개 값) 모드 간 전환하는 스�
 
 
 사용법:
-    python toggle_obb_bb.py --to-bb    # 전체를 BB 형식(5개 값)으로 변환
-    python toggle_obb_bb.py --to-obb   # 전체를 OBB 형식(6개 값)으로 변환
+    python bb_to_obb.py --to-bb    # 전체를 BB 형식(5개 값)으로 변환
+    python bb_to_obb.py --to-obb   # 전체를 OBB 형식(6개 값)으로 변환
 
 
 
