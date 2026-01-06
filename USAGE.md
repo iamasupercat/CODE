@@ -415,7 +415,70 @@ python DINOsplit.py \
 
 ---
 
-### 8. [수정]bolt_split.py - 볼트용 YOLO/ResNet 통합 split
+### 8. UnifiedSplit.py - YOLO/DINO 통합 split 생성 (최신 통합 버전)
+
+YOLO와 DINO 훈련용 split을 **동일한 기준(원본 이미지 ID)** 으로 한 번에 생성하는 통합 스크립트입니다.  
+기존 `YOLOsplit.py` + `DINOsplit.py`(bolt/door_area 모드)의 역할을 합친 최신 버전입니다.
+
+**모드:**
+1. **Bolt 모드** (`--mode bolt`):
+   - YOLO: 원본 + 증강 이미지 (Augmentation, AugforBolt_crop 등) 포함
+   - DINO: `crop_bolt`, `crop_bolt_aug` 기반 2-class 또는 4-class 라벨링
+2. **Door 모드** (`--mode door`):
+   - YOLO: 원본(앞도어) + 증강 이미지 포함
+   - DINO: `crop_high[_aug]`, `crop_mid[_aug]`, `crop_low[_aug]` 를 모두 모아 frontdoor 전체를 하나의 분류 문제로 사용
+
+**사용법 (예시):**
+```bash
+cd /home/ciw/work/datasets/CODE
+
+# Bolt 모드 (4클래스, YOLO+DINO 통합 split)
+python UnifiedSplit.py \
+    --mode bolt \
+    --bolt-4class \
+    --bad-date-range 0807 1013 \
+    --good-date-range 0616 1103 \
+    --subfolders frontfender hood trunklid \
+    --name Bolt_4class
+
+# Door 모드 (앞도어 전체, 0~4 클래스 그대로 사용)
+python UnifiedSplit.py \
+    --mode door \
+    --date-range 0807 1109 \
+    --obb-date-range 0616 0806 \
+    --subfolders frontdoor \
+    --name Door
+```
+
+**주요 옵션:**
+- `--mode {bolt,door}`: 모드 선택 (필수)
+- `--folders`: 분석할 기본 폴더 날짜들 (예: 0718 0721)
+- `--date-range START END`: 일반 폴더 날짜 구간 (MMDD)
+- `--obb-folders`: OBB 폴더 날짜들
+- `--obb-date-range START END`: OBB 폴더 날짜 구간
+- `--subfolders`: 찾을 하위폴더들 (예: frontfender hood trunklid, 또는 frontdoor)
+- `--name`: 출력 파일명에 사용할 이름 (예: Bolt_4class, Door)
+- `--bolt-4class`: Bolt 모드에서 4클래스 라벨 사용 (0:정측면 양품, 1:정측면 불량, 2:측면 양품, 3:측면 불량)
+- `--merge-classes`: Door 모드에서 DINO 라벨 1,2,3을 1로 합쳐 2-class(0:good, 1:defect)로 학습
+
+**출력:**
+- YOLO용:
+  - `TXT/train_{name}.txt`
+  - `TXT/val_{name}.txt`
+  - `TXT/test_{name}.txt`
+- DINO용:
+  - `TXT/train_dino_{name}.txt`
+  - `TXT/val_dino_{name}.txt`
+  - `TXT/test_dino_{name}.txt`
+
+**분할 특징:**
+- 원본 이미지 기준으로 **분할 키(image_id)** 를 만든 뒤, 해당 키에 속한 모든 증강/크롭 이미지를 같은 split에 배치
+- good/bad 비율을 고려한 stratified split (기존 `[수정]bolt_split.py`, `[수정]sealing_split.py`의 로직 계승)
+- DINO 증강(`*_aug`) 이미지는 train split에만 추가
+
+---
+
+### 9. [수정]bolt_split.py - 볼트용 YOLO/ResNet 통합 split
 
 YOLO와 ResNet 훈련용 split을 동일한 기준으로 동시에 생성하는 스크립트입니다.
 
@@ -443,7 +506,7 @@ python "[수정]bolt_split.py" \
 
 ---
 
-### 9. [수정]sealing_split.py - 도어용 YOLO/ResNet 통합 split
+### 10. [수정]sealing_split.py - 도어용 YOLO/ResNet 통합 split
 
 도어용 YOLO와 ResNet 훈련용 split을 동일한 기준으로 동시에 생성하는 스크립트입니다.
 
@@ -478,7 +541,7 @@ python "[수정]sealing_split.py" \
 
 ## 라벨 변환 스크립트
 
-### 10. xml_to_txt_obb.py - XML을 OBB TXT로 변환
+### 11. xml_to_txt_obb.py - XML을 OBB TXT로 변환
 
 LabelImg XML 파일을 YOLO OBB 형식의 TXT 파일로 변환하는 스크립트입니다.
 
@@ -521,7 +584,7 @@ YOLO OBB 형식:
 
 ---
 
-### 11. bb_to_obb.py - BB/OBB 형식 변환
+### 12. bb_to_obb.py - BB/OBB 형식 변환
 
 YOLO 라벨 파일을 BB(5개 값)와 OBB(6개 값) 모드 간 전환하는 스크립트입니다.
 
@@ -544,7 +607,7 @@ python bb_to_obb.py --to-obb
 
 ## 통계 및 카운트 스크립트
 
-### 12. count_bolt.py - 볼트 개수 세기
+### 13. count_bolt.py - 볼트 개수 세기
 
 labels 폴더의 txt 파일에서 클래스 0 또는 1인 경우를 볼트로 카운팅합니다.
 
@@ -570,7 +633,7 @@ python count_bolt.py 0718 0725 hood trunklid frontfender
 
 ---
 
-### 13. count_door.py - 도어 클래스 개수 세기
+### 14. count_door.py - 도어 클래스 개수 세기
 
 frontdoor 폴더에서 frontdoor.xlsx 파일을 읽어서 상단, 중간, 하단 각각의 클래스 개수와 퍼센테이지를 출력합니다.
 
@@ -594,7 +657,7 @@ python count_door.py 0807 1109
 
 ---
 
-### 14. count_image.py - 이미지 개수 세기
+### 15. count_image.py - 이미지 개수 세기
 
 특정 기간의 데이터 개수를 세는 스크립트입니다.
 
@@ -620,7 +683,7 @@ python count_image.py 0718 0725 hood trunklid frontfender
 
 ---
 
-### 15. check_excel_null.py - 엑셀 null 값 확인
+### 16. check_excel_null.py - 엑셀 null 값 확인
 
 frontdoor.xlsx 파일에서 quality가 null인 행에 대해 상단, 중간, 하단 열의 null 값을 확인하는 스크립트입니다.
 
@@ -662,7 +725,7 @@ python check_excel_null.py --folders 0807 0808 0809
 
 ## 디버깅을 위한 시각화 스크립트
 
-### 16. debug_aug.py - 증강 결과 시각화
+### 17. debug_aug.py - 증강 결과 시각화
 
 Augmentation 결과를 시각화하는 디버그 스크립트입니다.
 
@@ -686,7 +749,7 @@ python CODE/debug_aug.py 0718/frontfender/bad/images/bad_0216_1_1_5a269cdf-35fe-
 
 ---
 
-### 17. debug_crop.py - 크롭 결과 시각화
+### 18. debug_crop.py - 크롭 결과 시각화
 
 CropforBB.py의 크롭 결과를 시각화하는 디버그 스크립트입니다.
 
@@ -713,7 +776,7 @@ python CODE/debug_crop.py 1010/trunklid/good/images/good_8128_1_13_62c4b142-e159
 
 ---
 
-### 18. debug_xml_txt.py - XML/TXT 변환 결과 시각화
+### 19. debug_xml_txt.py - XML/TXT 변환 결과 시각화
 
 XML → TXT 변환 결과를 시각화하는 디버그 스크립트입니다.
 
@@ -739,7 +802,7 @@ python CODE/debug_xml_txt.py OBB/0718/hood/good/images/good_9362_1_e97d8f94-e26c
 
 ## 유틸리티 스크립트
 
-### 19. [삭제]make_finaltest_txt.py - 최종 테스트 txt 생성
+### 20. [삭제]make_finaltest_txt.py - 최종 테스트 txt 생성
 
 특정 날짜의 이미지 경로를 수집하여 최종 테스트용 txt 파일을 생성합니다.
 yolo, dino 통합 split 코드가 아직 없어 임시적으로 사용한 스크립트 (삭제될 예정)

@@ -5,16 +5,16 @@ YOLO와 DINO를 위한 통합 학습 데이터셋 split 생성 스크립트
 
 사용법:
     # Bolt 모드
-    python unified_split.py \
+    python UnifiedSplit.py \
         --mode bolt \
         --bolt-4class \
         --bad-date-range 0807 1013 \
         --good-date-range 0616 1103 \
         --subfolders frontfender hood trunklid \
-        --name Bolt_4class
+        --name Bolt
 
-    # Door 모드
-    python unified_split.py \
+    # Door 모드 (high/mid/low 각각 별도 split 생성)
+    python UnifiedSplit.py \
         --mode door \
         --date-range 0807 1109 \
         --obb-date-range 0616 0806 \
@@ -22,8 +22,15 @@ YOLO와 DINO를 위한 통합 학습 데이터셋 split 생성 스크립트
         --name Door
 
 결과:
-    YOLO용: TXT/train_{name}.txt, TXT/val_{name}.txt, TXT/test_{name}.txt
-    DINO용: TXT/train_dino_{name}.txt, TXT/val_dino_{name}.txt, TXT/test_dino_{name}.txt
+    Bolt 모드:
+        YOLO용: TXT/train_{name}.txt, TXT/val_{name}.txt, TXT/test_{name}.txt
+        DINO용: TXT/train_dino_{name}.txt, TXT/val_dino_{name}.txt, TXT/test_dino_{name}.txt
+    
+    Door 모드:
+        YOLO용: TXT/train_{name}.txt, TXT/val_{name}.txt, TXT/test_{name}.txt (한 번만 생성)
+        DINO용 (high): TXT/train_dino_{name}_high.txt, TXT/val_dino_{name}_high.txt, TXT/test_dino_{name}_high.txt
+        DINO용 (mid): TXT/train_dino_{name}_mid.txt, TXT/val_dino_{name}_mid.txt, TXT/test_dino_{name}_mid.txt
+        DINO용 (low): TXT/train_dino_{name}_low.txt, TXT/val_dino_{name}_low.txt, TXT/test_dino_{name}_low.txt
 """
 
 import os
@@ -644,8 +651,16 @@ def unified_stratified_split(yolo_images, dino_images, ratios):
     return (yolo_train, yolo_val, yolo_test), (dino_train, dino_val, dino_test)
 
 
-def write_split_files(yolo_splits, dino_splits, name=''):
-    """분할된 이미지들을 파일에 저장하는 함수"""
+def write_split_files(yolo_splits, dino_splits, name='', area=None):
+    """
+    분할된 이미지들을 파일에 저장하는 함수
+    
+    Args:
+        yolo_splits: YOLO split 튜플 (train, val, test)
+        dino_splits: DINO split 튜플 (train, val, test)
+        name: 출력 파일명에 사용할 이름
+        area: Door 모드에서 영역 이름 ('high', 'mid', 'low'). None이면 일반 저장
+    """
     txt_dir = Path('TXT')
     txt_dir.mkdir(parents=True, exist_ok=True)
     
@@ -654,19 +669,32 @@ def write_split_files(yolo_splits, dino_splits, name=''):
         yolo_val_file = txt_dir / f'val_{name}.txt'
         yolo_test_file = txt_dir / f'test_{name}.txt'
         
-        dino_train_file = txt_dir / f'train_dino_{name}.txt'
-        dino_val_file = txt_dir / f'val_dino_{name}.txt'
-        dino_test_file = txt_dir / f'test_dino_{name}.txt'
+        if area:
+            # Door 모드: 영역별 파일명 (name_area 순서)
+            dino_train_file = txt_dir / f'train_dino_{name}_{area}.txt'
+            dino_val_file = txt_dir / f'val_dino_{name}_{area}.txt'
+            dino_test_file = txt_dir / f'test_dino_{name}_{area}.txt'
+        else:
+            # Bolt 모드: 일반 파일명
+            dino_train_file = txt_dir / f'train_dino_{name}.txt'
+            dino_val_file = txt_dir / f'val_dino_{name}.txt'
+            dino_test_file = txt_dir / f'test_dino_{name}.txt'
     else:
         yolo_train_file = txt_dir / 'train.txt'
         yolo_val_file = txt_dir / 'val.txt'
         yolo_test_file = txt_dir / 'test.txt'
         
-        dino_train_file = txt_dir / 'train_dino.txt'
-        dino_val_file = txt_dir / 'val_dino.txt'
-        dino_test_file = txt_dir / 'test_dino.txt'
+        if area:
+            dino_train_file = txt_dir / f'train_dino_{area}.txt'
+            dino_val_file = txt_dir / f'val_dino_{area}.txt'
+            dino_test_file = txt_dir / f'test_dino_{area}.txt'
+        else:
+            dino_train_file = txt_dir / 'train_dino.txt'
+            dino_val_file = txt_dir / 'val_dino.txt'
+            dino_test_file = txt_dir / 'test_dino.txt'
     
     # YOLO용 파일 저장 (경로만)
+    # Door 모드에서는 high 영역 처리 시에만 YOLO 파일 저장
     yolo_train, yolo_val, yolo_test = yolo_splits
     missing_yolo = []
     
@@ -682,15 +710,22 @@ def write_split_files(yolo_splits, dino_splits, name=''):
                     missing_yolo.append(p)
         return written
     
-    yolo_train_written = write_paths(yolo_train_file, yolo_train)
-    yolo_val_written = write_paths(yolo_val_file, yolo_val)
-    yolo_test_written = write_paths(yolo_test_file, yolo_test)
-    
-    if missing_yolo:
-        miss_file = txt_dir / f'missing_yolo_{name if name else "default"}.txt'
-        with open(miss_file, 'w') as mf:
-            for p in missing_yolo:
-                mf.write(p + '\n')
+    # Door 모드가 아니거나, Door 모드에서 high 영역일 때만 YOLO 파일 저장
+    if area is None or area == 'high':
+        yolo_train_written = write_paths(yolo_train_file, yolo_train)
+        yolo_val_written = write_paths(yolo_val_file, yolo_val)
+        yolo_test_written = write_paths(yolo_test_file, yolo_test)
+        
+        if missing_yolo:
+            miss_file = txt_dir / f'missing_yolo_{name if name else "default"}.txt'
+            with open(miss_file, 'w') as mf:
+                for p in missing_yolo:
+                    mf.write(p + '\n')
+    else:
+        # mid/low 영역에서는 YOLO 파일 저장하지 않음
+        yolo_train_written = 0
+        yolo_val_written = 0
+        yolo_test_written = 0
     
     # DINO용 파일 저장 (경로 + 라벨)
     dino_train, dino_val, dino_test = dino_splits
@@ -719,10 +754,13 @@ def write_split_files(yolo_splits, dino_splits, name=''):
                 mf.write(p + '\n')
     
     print(f"\n=== 분할 결과 ===")
-    print(f"YOLO용:")
-    print(f"  train: {len(yolo_train)}개 (실제 기록: {yolo_train_written}) -> {yolo_train_file}")
-    print(f"  val: {len(yolo_val)}개 (실제 기록: {yolo_val_written}) -> {yolo_val_file}")
-    print(f"  test: {len(yolo_test)}개 (실제 기록: {yolo_test_written}) -> {yolo_test_file}")
+    if area:
+        print(f"[{area.upper()} 영역]")
+    if area is None or area == 'high':
+        print(f"YOLO용:")
+        print(f"  train: {len(yolo_train)}개 (실제 기록: {yolo_train_written}) -> {yolo_train_file}")
+        print(f"  val: {len(yolo_val)}개 (실제 기록: {yolo_val_written}) -> {yolo_val_file}")
+        print(f"  test: {len(yolo_test)}개 (실제 기록: {yolo_test_written}) -> {yolo_test_file}")
     print(f"DINO용:")
     print(f"  train: {len(dino_train)}개 (실제 기록: {dino_train_written}) -> {dino_train_file}")
     print(f"  val: {len(dino_val)}개 (실제 기록: {dino_val_written}) -> {dino_val_file}")
@@ -887,8 +925,45 @@ def main():
             print("수집된 원본 폴더명이 없습니다.")
             return
         
-        dino_images = collect_door_dino_images(all_folders, args.subfolders, original_folders, merge_classes)
+        # Door 모드: 각 영역(high/mid/low)별로 별도 split 생성
+        areas = ['high', 'mid', 'low']
+        
+        for area in areas:
+            print(f"\n{'='*60}")
+            print(f"=== [{area.upper()} 영역] DINO 이미지 수집 및 분할 ===")
+            print(f"{'='*60}")
+            
+            # 해당 영역의 DINO 이미지만 수집
+            dino_images = collect_door_dino_images(
+                all_folders, 
+                args.subfolders, 
+                original_folders, 
+                merge_classes,
+                target_areas=[area]
+            )
+            
+            if not dino_images:
+                print(f"[{area.upper()}] 수집된 DINO용 이미지가 없습니다. 건너뜁니다.")
+                continue
+            
+            print(f"\n[{area.upper()}] 총 {len(dino_images)}개 DINO용 이미지 수집 완료")
+            
+            # 통합 분할 수행 (YOLO는 첫 번째 영역 처리 시 한 번만 저장)
+            yolo_splits, dino_splits = unified_stratified_split(all_yolo_images, dino_images, SPLIT_RATIO)
+            
+            # 파일에 저장 (YOLO는 첫 번째 영역에서만 저장, DINO는 각 영역별로 저장)
+            if area == 'high':
+                # YOLO 파일은 high 영역 처리 시 한 번만 저장
+                write_split_files(yolo_splits, dino_splits, args.name, area=area)
+            else:
+                # DINO만 저장 (YOLO는 None으로 전달하여 저장하지 않음)
+                # YOLO splits를 None으로 전달하면 저장하지 않도록 수정 필요
+                # 간단하게: yolo_splits를 그대로 전달하되, area가 있으면 DINO만 출력하도록
+                write_split_files(yolo_splits, dino_splits, args.name, area=area)
+        
+        return  # Door 모드는 여기서 종료
     
+    # Bolt 모드 처리
     if not dino_images:
         print("수집된 DINO용 이미지가 없습니다.")
         return
