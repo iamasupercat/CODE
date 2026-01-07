@@ -7,10 +7,10 @@
 # 이 밖의 자세한 사용법은 USAGE.md 파일을 참조하세요.
 사용법:
     python AugforDoor_crop.py \
-        --date-range 0807 1109 \
-        --obb-date-range 0616 0806 \
-        --subfolders frontdoor \
-        --set_types good bad
+    --date-range 0807 1109 \
+    --obb-date-range 0616 0806 \
+    --subfolders frontdoor \
+    --set_types good bad
 
 
 

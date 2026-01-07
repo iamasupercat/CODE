@@ -23,8 +23,8 @@ YOLO와 DINO를 위한 통합 학습 데이터셋 split 생성 스크립트
 
 결과:
     Bolt 모드:
-        YOLO용: TXT/train_{name}.txt, TXT/val_{name}.txt, TXT/test_{name}.txt
-        DINO용: TXT/train_dino_{name}.txt, TXT/val_dino_{name}.txt, TXT/test_dino_{name}.txt
+    YOLO용: TXT/train_{name}.txt, TXT/val_{name}.txt, TXT/test_{name}.txt
+    DINO용: TXT/train_dino_{name}.txt, TXT/val_dino_{name}.txt, TXT/test_dino_{name}.txt
     
     Door 모드:
         YOLO용: TXT/train_{name}.txt, TXT/val_{name}.txt, TXT/test_{name}.txt (한 번만 생성)

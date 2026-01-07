@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-XML 라벨 파일을 YOLO OBB 형식 TXT 파일로 변환하는 스크립트 (labelImg2로 작업한 라벨을 변환)
+XML 라벨 파일을 YOLO OBB 형식 TXT 파일로 변환하는 스크립트 (roLabelImg로 작업한 라벨을 변환)
 
 
 
@@ -16,8 +16,34 @@ import argparse
 from pathlib import Path
 from collections import defaultdict
 import re
+import html
 
-# 고정된 클래스 매핑 (클래스 이름 -> ID)
+# 클래스명 정규화 매핑 (한글/영어 클래스명 -> 표준 영어 클래스명)
+CLASS_NAME_MAPPING = {
+    '볼트 정측면': 'bolt_frontside',
+    '볼트 측면': 'bolt_side',
+    '볼트 정면': 'bolt_frontside',
+    'sedan (trunklid)': 'sedan',
+    'sedan': 'sedan',
+    'suv (trunklid)': 'suv',
+    'suv': 'suv',
+    'hood': 'hood',
+    'long (frontfender)': 'long',
+    'long': 'long',
+    'mid (frontfender)': 'mid',
+    'mid': 'mid',
+    'short (frontfender)': 'short',
+    'short': 'short',
+}
+
+# Door 모드 전용 클래스 매핑 (high/mid/low는 Door에서만 사용)
+DOOR_CLASS_MAPPING = {
+    'high': 0,
+    'mid': 1,
+    'low': 2,
+}
+
+# 일반 클래스 매핑 (영어 클래스 이름 -> ID)
 FIXED_CLASS_MAPPING = {
     'bolt_frontside': 0,
     'bolt_side': 1,
@@ -25,19 +51,20 @@ FIXED_CLASS_MAPPING = {
     'suv': 3,  # trunklid
     'hood': 4,
     'long': 5,  # frontfender
-    'mid': 6,  # frontfender
+    'mid': 6,  # frontfender (Door가 아닐 때)
     'short': 7,  # frontfender
     'bolt_front': 8,
 }
 
 
-def parse_xml_to_yolo_obb(xml_path, class_name_to_id=None):
+def parse_xml_to_yolo_obb(xml_path, class_name_to_id=None, is_door_mode=False):
     """
     XML 파일을 파싱하여 YOLO OBB 형식으로 변환
     
     Args:
         xml_path: XML 파일 경로
         class_name_to_id: 클래스 이름을 ID로 매핑하는 딕셔너리 (None이면 자동 생성)
+        is_door_mode: Door 모드 여부 (True면 high=0, mid=1, low=2 사용)
     
     Returns:
         (lines, class_mapping): YOLO 형식 라인 리스트와 클래스 매핑 딕셔너리
@@ -77,17 +104,39 @@ def parse_xml_to_yolo_obb(xml_path, class_name_to_id=None):
         
         class_name = name_elem.text.strip()
         
+        # HTML 엔티티 디코딩 (예: &#48380;&#53944; -> 볼트)
+        try:
+            class_name = html.unescape(class_name)
+        except:
+            pass
+        
         # 괄호와 그 안의 내용 제거 (예: "suv (trunklid)" -> "suv")
         class_name_clean = re.sub(r'\s*\([^)]*\)\s*', '', class_name).strip()
         
-        # 고정된 클래스 매핑 사용 (원본 이름과 정리된 이름 모두 확인)
-        if class_name_clean in FIXED_CLASS_MAPPING:
+        # 클래스명 정규화 (한글/영어 클래스명을 표준 영어 클래스명으로 변환)
+        if class_name_clean in CLASS_NAME_MAPPING:
+            english_class_name = CLASS_NAME_MAPPING[class_name_clean]
+        elif class_name in CLASS_NAME_MAPPING:
+            english_class_name = CLASS_NAME_MAPPING[class_name]
+        else:
+            # 한글 매핑이 없으면 원본 그대로 사용 (이미 영어일 수 있음)
+            english_class_name = class_name_clean
+        
+        # Door 모드인 경우 high/mid/low를 Door 전용 매핑으로 처리
+        if is_door_mode and english_class_name in DOOR_CLASS_MAPPING:
+            class_id = DOOR_CLASS_MAPPING[english_class_name]
+        elif is_door_mode and class_name_clean in DOOR_CLASS_MAPPING:
+            class_id = DOOR_CLASS_MAPPING[class_name_clean]
+        # 일반 클래스 매핑 사용
+        elif english_class_name in FIXED_CLASS_MAPPING:
+            class_id = FIXED_CLASS_MAPPING[english_class_name]
+        elif class_name_clean in FIXED_CLASS_MAPPING:
             class_id = FIXED_CLASS_MAPPING[class_name_clean]
         elif class_name in FIXED_CLASS_MAPPING:
             class_id = FIXED_CLASS_MAPPING[class_name]
         else:
             # 매핑에 없는 클래스는 경고 후 건너뛰기
-            print(f"경고: 알 수 없는 클래스 '{class_name}' (정리 후: '{class_name_clean}') (파일: {xml_path}). 건너뜁니다.")
+            print(f"경고: 알 수 없는 클래스 '{class_name}' (정리 후: '{class_name_clean}', 영어 변환: '{english_class_name}') (파일: {xml_path}). 건너뜁니다.")
             continue
         
         # class_name_to_id에 기록 (로깅용)
@@ -123,7 +172,7 @@ def parse_xml_to_yolo_obb(xml_path, class_name_to_id=None):
     return lines, class_name_to_id
 
 
-def convert_xml_folder(xml_folder_path, output_folder_path=None, class_mapping=None):
+def convert_xml_folder(xml_folder_path, output_folder_path=None, class_mapping=None, is_door_mode=False):
     """
     폴더 내의 모든 XML 파일을 TXT로 변환
     
@@ -131,6 +180,7 @@ def convert_xml_folder(xml_folder_path, output_folder_path=None, class_mapping=N
         xml_folder_path: XML 파일들이 있는 폴더
         output_folder_path: 출력 폴더 (None이면 XML 폴더와 동일)
         class_mapping: 클래스 매핑 딕셔너리 (None이면 자동 생성)
+        is_door_mode: Door 모드 여부 (True면 high=0, mid=1, low=2 사용)
     
     Returns:
         (converted_count, class_mapping): 변환된 파일 수와 클래스 매핑
@@ -154,7 +204,7 @@ def convert_xml_folder(xml_folder_path, output_folder_path=None, class_mapping=N
         txt_file = os.path.splitext(xml_file)[0] + '.txt'
         txt_path = os.path.join(output_folder_path, txt_file)
         
-        lines, updated_mapping = parse_xml_to_yolo_obb(xml_path, all_class_mapping)
+        lines, updated_mapping = parse_xml_to_yolo_obb(xml_path, all_class_mapping, is_door_mode)
         
         # 클래스 매핑 업데이트
         all_class_mapping.update(updated_mapping)
@@ -174,9 +224,14 @@ def convert_xml_folder(xml_folder_path, output_folder_path=None, class_mapping=N
 
 
 def collect_date_range_folders(base_path: str, start: str, end: str):
-    """날짜 범위의 폴더 수집"""
+    """
+    base_path 아래 날짜 폴더 중 start~end 범위(포함)의 절대경로 리스트 반환.
+    - 지원 포맷: 4자리(MMDD) 또는 8자리(YYYYMMDD)
+    - 입력 길이에 맞는 폴더만 비교 대상으로 포함
+    - 일반 폴더와 OBB 폴더 모두 검색
+    """
     if not (start.isdigit() and end.isdigit()):
-        raise ValueError("date-range는 숫자만 가능합니다.")
+        raise ValueError("date-range는 숫자만 가능합니다. 예: 0715 0805 또는 20240715 20240805")
     if len(start) != len(end) or len(start) not in (4, 8):
         raise ValueError("date-range는 4자리(MMDD) 또는 8자리(YYYYMMDD)로 동일 길이여야 합니다.")
 
@@ -185,8 +240,23 @@ def collect_date_range_folders(base_path: str, start: str, end: str):
         s_val, e_val = e_val, s_val
 
     found = []
-    obb_path = os.path.join(base_path, "OBB")
     
+    # 일반 폴더 검색
+    try:
+        for name in os.listdir(base_path):
+            full = os.path.join(base_path, name)
+            if not os.path.isdir(full):
+                continue
+            if not (name.isdigit() and len(name) == len(start)):
+                continue
+            val = int(name)
+            if s_val <= val <= e_val:
+                found.append(os.path.abspath(full))
+    except FileNotFoundError:
+        print(f"기본 경로가 존재하지 않습니다: {base_path}")
+    
+    # OBB 폴더 검색
+    obb_path = os.path.join(base_path, "OBB")
     try:
         if os.path.exists(obb_path):
             for name in os.listdir(obb_path):
@@ -225,8 +295,11 @@ def main():
             print(f"오류: 폴더가 존재하지 않습니다: {xml_folder}")
             return
         
+        # Door 모드 판단 (경로에 frontdoor가 포함되어 있으면 Door 모드)
+        is_door_mode = 'frontdoor' in xml_folder.lower() or 'door' in xml_folder.lower()
+        
         print(f"변환 중: {xml_folder}")
-        count, mapping = convert_xml_folder(xml_folder)
+        count, mapping = convert_xml_folder(xml_folder, is_door_mode=is_door_mode)
         print(f"변환 완료: {count}개 파일")
         if mapping:
             print("\n클래스 매핑:")
@@ -270,6 +343,9 @@ def main():
                 subfolder_path = os.path.join(date_folder, subfolder)
                 print(f"  서브폴더: {subfolder}")
                 
+                # Door 모드 판단 (서브폴더 이름에 frontdoor가 포함되어 있으면 Door 모드)
+                is_door_mode = 'frontdoor' in subfolder.lower() or 'door' in subfolder.lower()
+                
                 for cat in args.category:
                     labels_path = os.path.join(subfolder_path, cat, 'labels')
                     if not os.path.exists(labels_path):
@@ -280,7 +356,7 @@ def main():
                         continue
                     
                     print(f"    {cat}: {len(xml_files)}개 XML 파일")
-                    count, mapping = convert_xml_folder(labels_path, labels_path, all_mapping)
+                    count, mapping = convert_xml_folder(labels_path, labels_path, all_mapping, is_door_mode)
                     all_mapping.update(mapping)
                     total_converted += count
                     print(f"      → {count}개 TXT 파일 생성")
