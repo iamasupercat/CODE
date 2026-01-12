@@ -285,137 +285,7 @@ python AugforDoor_crop.py \
 
 ## 데이터 분할 스크립트
 
-### 6. YOLOsplit.py - YOLO 훈련용 split 생성
-
-YOLO 훈련/검증/테스트 split만 생성하는 스크립트입니다.
-
-**기능:**
-- 원본 이미지 기준으로 분할
-- 증강 이미지는 train에만 포함
-- 양불량 비율 유지 (stratified split)
-
-**사용법:**
-```bash
-# 일반 폴더만
-python YOLOsplit.py \
-    --folders 0718 0721 \
-    --subfolders frontfender hood trunklid \
-    --name bolt
-
-# 날짜 범위 지정
-python YOLOsplit.py \
-    --date-range 0807 1109 \
-    --subfolders frontfender hood trunklid \
-    --name bolt
-
-# 일반 폴더 + OBB 폴더
-python YOLOsplit.py \
-    --date-range 0807 1109 \
-    --obb-date-range 0616 0806 \
-    --subfolders frontfender hood trunklid \
-    --name bolt_obb
-```
-
-**옵션:**
-- `--folders`: 분석할 기본 폴더 날짜들 (예: 0616 0718 0721)
-- `--date-range START END`: 일반 폴더 날짜 구간 (MMDD)
-- `--obb-folders`: OBB 폴더 날짜들 (예: 0718 0806)
-- `--obb-date-range START END`: OBB 폴더 날짜 구간 (MMDD)
-- `--subfolders`: 찾을 하위폴더들 (필수)
-- `--name`: 출력 파일명에 사용할 이름
-
-**출력:**
-- `TXT/train_{name}.txt`: 훈련용 이미지 경로 목록
-- `TXT/val_{name}.txt`: 검증용 이미지 경로 목록
-- `TXT/test_{name}.txt`: 테스트용 이미지 경로 목록
-
-**분할 비율:** 7:1:2 (train:val:test)
-
----
-
-### 7. DINOsplit.py - DINO 훈련용 split 생성 (통합)
-
-DINO 훈련용 split을 생성하는 통합 스크립트입니다.
-**2class 기능을 제공하고는 있으나 4 or 5 class 형태로 split 후, dino 학습 시 merge하는 식의 작업 권장**
-
-
-**모드:**
-1. **Bolt 모드** (--mode bolt):
-   - 기본: 0(good), 1(bad)
-   - --bolt-4class: 0(정측면 양품), 1(정측면 불량), 2(측면 양품), 3(측면 불량)
-
-2. **Door Area** 모드 (--mode door_area):
-   - 앞도어 상/중/하 영역별로 각각 split 수행
-   - 상단: crop_high (원본), crop_high_aug (증강)
-   - 중간: crop_mid (원본), crop_mid_aug (증강)
-   - 하단: crop_low (원본), crop_low_aug (증강)
-   - 하위 폴더 클래스 번호(0,1,2,3) 그대로 사용
-   - --merge-classes: 1,2,3,4를 1로 합침 (0은 그대로)
-   - (0:양품, 1:출고실링, 2:실링없음, 3:작업실링, 4:테이프실링)
-
-
-**사용법:**
-```bash
-# Bolt 모드 (2클래스)
-python DINOsplit.py \
-    --mode bolt \
-    --bad-date-range 0807 1013 \
-    --good-date-range 0616 1103 \
-    --subfolders frontfender hood trunklid \
-    --name Bolt
-
-# Bolt 모드 (4클래스)
-python DINOsplit.py \
-    --mode bolt \
-    --bolt-4class \
-    --bad-date-range 0807 1013 \
-    --good-date-range 0616 1103 \
-    --subfolders frontfender hood trunklid \
-    --name Bolt_4class
-
-# Door Area 모드 (2클래스, 모든 영역 병합)
-python DINOsplit.py \
-    --mode door_area \
-    --merge-areas high mid low \
-    --date-range 0807 1109 \
-    --obb-date-range 0616 0806 \
-    --subfolders frontdoor \
-    --name Door_2class
-
-# Door Area 모드 (5클래스, low만)
-python DINOsplit.py \
-    --mode door_area \
-    --areas low \
-    --date-range 0807 1109 \
-    --obb-date-range 0616 0806 \
-    --subfolders frontdoor \
-    --name Door_4class
-```
-
-**옵션:**
-- `--mode`: `bolt`, `door`, `door_area` 선택 (필수)
-- `--folders`: 분석할 기본 폴더 날짜들
-- `--date-range START END`: 일반 폴더 날짜 구간
-- `--obb-folders`: OBB 폴더 날짜들
-- `--obb-date-range START END`: OBB 폴더 날짜 구간
-- `--subfolders`: 찾을 하위폴더들 (필수)
-- `--name`: 출력 파일명에 사용할 이름
-- `--bolt-4class`: Bolt 모드에서 4클래스 사용
-- `--bad-date-range START END`: Bolt 모드에서 bad용 날짜 구간
-- `--good-date-range START END`: Bolt 모드에서 good용 날짜 구간
-- `--areas`: Door Area 모드에서 처리할 영역 선택 (high, mid, low)
-- `--merge-areas`: Door Area 모드에서 클래스 병합을 적용할 영역 선택
-
-**출력:**
-- `TXT/train_dino_{name}.txt`: 훈련용 (경로 라벨 형식)
-- `TXT/val_dino_{name}.txt`: 검증용
-- `TXT/test_dino_{name}.txt`: 테스트용
-
-**분할 비율:** 7:1:2 (train:val:test)
-
----
-
-### 8. UnifiedSplit.py - YOLO/DINO 통합 split 생성 (최신 통합 버전)
+### 6. UnifiedSplit.py - YOLO/DINO 통합 split 생성 (최신 통합 버전)
 
 YOLO와 DINO 훈련용 split을 **동일한 기준(원본 이미지 ID)** 으로 한 번에 생성하는 통합 스크립트입니다.  
 기존 `YOLOsplit.py` + `DINOsplit.py`(bolt/door_area 모드)의 역할을 합친 최신 버전입니다.
@@ -478,70 +348,9 @@ python UnifiedSplit.py \
 
 ---
 
-### 9. [수정]bolt_split.py - 볼트용 YOLO/ResNet 통합 split
-
-YOLO와 ResNet 훈련용 split을 동일한 기준으로 동시에 생성하는 스크립트입니다.
-
-**사용법:**
-```bash
-# 기본 사용
-python "[수정]bolt_split.py" \
-    --folders 0616 0718 0721 0725 0728 0729 0731 0801 0804 0805 0806 \
-    --subfolders frontfender hood trunklid \
-    --name bolt
-```
-
-**옵션:**
-- `--folders`: 분석할 기본 폴더 날짜들
-- `--subfolders`: 찾을 하위폴더들 (필수)
-- `--name`: 출력 파일명에 사용할 이름
-
-**출력:**
-- YOLO용: `TXT/train_{name}.txt`, `TXT/val_{name}.txt`, `TXT/test_{name}.txt`
-- ResNet용: `TXT/train_resnet_{name}.txt`, `TXT/val_resnet_{name}.txt`, `TXT/test_resnet_{name}.txt`
-
-**ResNet 라벨:**
-- 0: good
-- 1: bad
-
----
-
-### 10. [수정]sealing_split.py - 도어용 YOLO/ResNet 통합 split
-
-도어용 YOLO와 ResNet 훈련용 split을 동일한 기준으로 동시에 생성하는 스크립트입니다.
-
-**사용법:**
-```bash
-# 기본 사용
-python "[수정]sealing_split.py" \
-    --folders 0616 0721 0728 0729 0731 0801 0804 0805 0806 \
-    --subfolders frontdoor \
-    --name frontdoor
-```
-
-**옵션:**
-- `--folders`: 분석할 기본 폴더 날짜들
-- `--subfolders`: 찾을 하위폴더들 (필수)
-- `--name`: 출력 파일명에 사용할 이름
-
-**출력:**
-- YOLO용: `TXT/train_{name}.txt`, `TXT/val_{name}.txt`, `TXT/test_{name}.txt`
-- ResNet용 (영역별 분리):
-  - `TXT/train_resnet_high_{name}.txt`, `TXT/val_resnet_high_{name}.txt`, `TXT/test_resnet_high_{name}.txt`
-  - `TXT/train_resnet_mid_{name}.txt`, `TXT/val_resnet_mid_{name}.txt`, `TXT/test_resnet_mid_{name}.txt`
-  - `TXT/train_resnet_low_{name}.txt`, `TXT/val_resnet_low_{name}.txt`, `TXT/test_resnet_low_{name}.txt`
-
-**ResNet 라벨 (실링 클래스):**
-- 0: 출고실링(양품)
-- 1: 실링없음
-- 2: 작업실링
-- 3: 테이프실링
-
----
-
 ## 라벨 변환 스크립트
 
-### 11. xml_to_txt_obb.py - XML을 OBB TXT로 변환
+### 7. xml_to_txt_obb.py - XML을 OBB TXT로 변환
 
 LabelImg XML 파일을 YOLO OBB 형식의 TXT 파일로 변환하는 스크립트입니다.
 
@@ -584,7 +393,7 @@ YOLO OBB 형식:
 
 ---
 
-### 12. bb_to_obb.py - BB/OBB 형식 변환
+### 8. bb_to_obb.py - BB/OBB 형식 변환
 
 YOLO 라벨 파일을 BB(5개 값)와 OBB(6개 값) 모드 간 전환하는 스크립트입니다.
 
@@ -607,7 +416,7 @@ python bb_to_obb.py --to-obb
 
 ## 통계 및 카운트 스크립트
 
-### 13. count_bolt.py - 볼트 개수 세기
+### 9. count_bolt.py - 볼트 개수 세기
 
 labels 폴더의 txt 파일에서 클래스 0 또는 1인 경우를 볼트로 카운팅합니다.
 
@@ -633,7 +442,7 @@ python count_bolt.py 0718 0725 hood trunklid frontfender
 
 ---
 
-### 14. count_door.py - 도어 클래스 개수 세기
+### 10. count_door.py - 도어 클래스 개수 세기
 
 frontdoor 폴더에서 frontdoor.xlsx 파일을 읽어서 상단, 중간, 하단 각각의 클래스 개수와 퍼센테이지를 출력합니다.
 
@@ -657,7 +466,7 @@ python count_door.py 0807 1109
 
 ---
 
-### 15. count_image.py - 이미지 개수 세기
+### 11. count_image.py - 이미지 개수 세기
 
 특정 기간의 데이터 개수를 세는 스크립트입니다.
 
@@ -683,7 +492,7 @@ python count_image.py 0718 0725 hood trunklid frontfender
 
 ---
 
-### 16. check_excel_null.py - 엑셀 null 값 확인
+### 12. check_excel_null.py - 엑셀 null 값 확인
 
 frontdoor.xlsx 파일에서 quality가 null인 행에 대해 상단, 중간, 하단 열의 null 값을 확인하는 스크립트입니다.
 
@@ -725,7 +534,7 @@ python check_excel_null.py --folders 0807 0808 0809
 
 ## 디버깅을 위한 시각화 스크립트
 
-### 17. debug_aug.py - 증강 결과 시각화
+### 13. debug_aug.py - 증강 결과 시각화
 
 Augmentation 결과를 시각화하는 디버그 스크립트입니다.
 
@@ -749,7 +558,7 @@ python CODE/debug_aug.py 0718/frontfender/bad/images/bad_0216_1_1_5a269cdf-35fe-
 
 ---
 
-### 18. debug_crop.py - 크롭 결과 시각화
+### 14. debug_crop.py - 크롭 결과 시각화
 
 CropforBB.py의 크롭 결과를 시각화하는 디버그 스크립트입니다.
 
@@ -776,7 +585,7 @@ python CODE/debug_crop.py 1010/trunklid/good/images/good_8128_1_13_62c4b142-e159
 
 ---
 
-### 19. debug_xml_txt.py - XML/TXT 변환 결과 시각화
+### 15. debug_xml_txt.py - XML/TXT 변환 결과 시각화
 
 XML → TXT 변환 결과를 시각화하는 디버그 스크립트입니다.
 
@@ -802,23 +611,86 @@ python CODE/debug_xml_txt.py OBB/0718/hood/good/images/good_9362_1_e97d8f94-e26c
 
 ## 유틸리티 스크립트
 
-### 20. [삭제]make_finaltest_txt.py - 최종 테스트 txt 생성
+### 16. find_missing_labels.py - 라벨 파일 누락 검색
 
-특정 날짜의 이미지 경로를 수집하여 최종 테스트용 txt 파일을 생성합니다.
-yolo, dino 통합 split 코드가 아직 없어 임시적으로 사용한 스크립트 (삭제될 예정)
+매칭되는 txt 파일이 없는 이미지들의 리스트를 추출하는 스크립트입니다.
 
 **사용법:**
 ```bash
-python "[삭제]make_finaltest_txt.py"
+# 날짜 범위 지정
+python find_missing_labels.py \
+    --date-range 0807 1109 \
+    --subfolders frontfender hood trunklid \
+    --output missing_labels.txt
 ```
 
-**처리 날짜:** 1105, 1106, 1128
+**옵션:**
+- `--date-range START END`: 일반 폴더 날짜 구간 (MMDD)
+- `--obb-date-range START END`: OBB 폴더 날짜 구간 (MMDD)
+- `--subfolders`: 찾을 하위폴더들 (필수)
+- `--output`: 출력 파일 경로 (기본값: missing_labels.txt)
 
 **출력:**
-- `TXT/finaltest_Bolt.txt`: 볼트 이미지 경로 목록 (frontfender, hood, trunklid)
-- `TXT/finaltest_Door.txt`: 도어 이미지 경로 목록 (frontdoor)
+- 이미지 경로와 예상 라벨 경로를 `|`로 구분하여 저장
 
-**라벨:** 경로만 저장 (라벨 없음)
+---
+
+### 17. find_missing_bolt_classes.py - Bolt 클래스 누락 검색
+
+Bolt 모드에서 txt 파일 내에 클래스 0 또는 1이 아예 없는 경우를 찾는 스크립트입니다.
+
+**사용법:**
+```bash
+# 날짜 범위 지정
+python find_missing_bolt_classes.py \
+    --date-range 0807 1109 \
+    --subfolders frontfender hood trunklid \
+    --output missing_bolt_classes.txt
+```
+
+**옵션:**
+- `--date-range START END`: 일반 폴더 날짜 구간 (MMDD)
+- `--obb-date-range START END`: OBB 폴더 날짜 구간 (MMDD)
+- `--subfolders`: 찾을 하위폴더들 (필수, frontfender, hood, trunklid)
+- `--output`: 출력 파일 경로 (기본값: missing_bolt_classes.txt)
+
+**출력:**
+- 이미지 경로, 라벨 경로, 발견된 클래스들을 저장
+- 클래스별 통계 제공
+
+---
+
+### 18. verify_unified_split.py - Split 검증
+
+UnifiedSplit.py로 생성된 YOLO와 DINO용 TXT 파일들의 고유 ID 일치 여부를 검증하는 스크립트입니다.
+
+**사용법:**
+```bash
+# Bolt 모드
+python verify_unified_split.py --name Bolt
+
+# Door 모드 (high 영역만)
+python verify_unified_split.py --name Door --area high
+
+# Door 모드 (모든 영역)
+python verify_unified_split.py --name Door --all-areas
+```
+
+**옵션:**
+- `--name`: 검증할 split 이름
+- `--area`: Door 모드에서 검증할 영역 (high, mid, low)
+- `--all-areas`: Door 모드에서 모든 영역 검증
+
+**출력:**
+- YOLO와 DINO split 간 ID 일치 여부 확인
+- 불일치하는 ID 목록 출력
+
+---
+
+## Archive 폴더
+
+`archive/` 폴더는 더 이상 사용하지 않는 코드 파일들을 백업용으로 보관하고 있는 폴더입니다.  
+현재는 `UnifiedSplit.py`가 기존의 `YOLOsplit.py`, `DINOsplit.py`, `bolt_split.py`, `sealing_split.py` 등의 기능을 통합하여 대체하고 있습니다.
 
 ---
 

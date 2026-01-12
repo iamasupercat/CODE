@@ -495,96 +495,129 @@ def collect_door_dino_images(base_folders, subfolder_names, original_folders, me
     return all_images
 
 
-def unified_stratified_split(yolo_images, dino_images, ratios):
-    """YOLO와 DINO 이미지를 동일한 기준으로 분할하는 함수 (sealing_split.py 로직 참고)"""
-    # 1. YOLO 이미지를 기준으로 분할 키 생성
-    split_keys = set()
-    for img in yolo_images:
-        if not img.get('is_augmented', False):  # 원본만 사용
-            key = img['image_id']
-            split_keys.add(key)
+def unified_stratified_split(yolo_images, dino_images, ratios, existing_split_keys=None):
+    """
+    YOLO와 DINO 이미지를 동일한 기준으로 분할하는 함수 (sealing_split.py 로직 참고)
     
-    print(f"\n=== 분할 키 생성 ===")
-    print(f"총 분할 키 수: {len(split_keys)}개")
+    Args:
+        yolo_images: YOLO 이미지 리스트
+        dino_images: DINO 이미지 리스트
+        ratios: split 비율 [train, val, test]
+        existing_split_keys: 기존에 결정된 split 키 (train_keys, val_keys, test_keys) 딕셔너리.
+                            None이면 새로운 split을 생성하고, 제공되면 이를 재사용하여 DINO split만 생성.
     
-    # 2. 각 키별로 good/bad 비율을 유지하면서 stratified split 수행
-    key_quality_groups = defaultdict(lambda: {'good': [], 'bad': []})
-    for img in yolo_images:
-        if not img.get('is_augmented', False):
-            key = img['image_id']
-            quality = img['quality']
-            key_quality_groups[key][quality].append(img)
-    
-    # 각 키별로 good/bad 비율 계산
-    key_ratios = {}
-    for key in split_keys:
-        good_count = len(key_quality_groups[key]['good'])
-        bad_count = len(key_quality_groups[key]['bad'])
-        total_count = good_count + bad_count
-        if total_count > 0:
-            good_ratio = good_count / total_count
-            key_ratios[key] = good_ratio
-        else:
-            key_ratios[key] = 0.0
-    
-    # good/bad 비율별로 키들을 그룹화
-    ratio_groups = defaultdict(list)
-    for key, ratio in key_ratios.items():
-        ratio_groups[ratio].append(key)
-    
-    print(f"good/bad 비율 그룹 수: {len(ratio_groups)}개")
-    for ratio, keys in list(ratio_groups.items())[:5]:
-        print(f"  비율 {ratio:.2f}: {len(keys)}개 키")
-    
-    # 각 비율 그룹별로 stratified split 수행
-    train_keys = set()
-    val_keys = set()
-    test_keys = set()
-    
-    for ratio, keys in ratio_groups.items():
-        random.shuffle(keys)
-        n_total = len(keys)
-        n_train = int(n_total * ratios[0])
-        n_val = int(n_total * ratios[1])
-        n_test = n_total - n_train - n_val
+    Returns:
+        (yolo_splits, dino_splits, split_keys_dict)
+        - yolo_splits: {'train': [...], 'val': [...], 'test': [...]}
+        - dino_splits: {'train': [...], 'val': [...], 'test': [...]}
+        - split_keys_dict: {'train': set(...), 'val': set(...), 'test': set(...)}
+    """
+    # 기존 split 키가 제공된 경우 재사용
+    if existing_split_keys is not None:
+        train_keys = existing_split_keys['train']
+        val_keys = existing_split_keys['val']
+        test_keys = existing_split_keys['test']
+        print(f"\n=== 기존 split 키 재사용 ===")
+        print(f"train 키: {len(train_keys)}개")
+        print(f"val 키: {len(val_keys)}개")
+        print(f"test 키: {len(test_keys)}개")
+    else:
+        # 1. YOLO 이미지를 기준으로 분할 키 생성
+        split_keys = set()
+        for img in yolo_images:
+            if not img.get('is_augmented', False):  # 원본만 사용
+                key = img['image_id']
+                split_keys.add(key)
         
-        for key in keys[:n_train]:
-            train_keys.add(key)
-        for key in keys[n_train:n_train+n_val]:
-            val_keys.add(key)
-        for key in keys[n_train+n_val:]:
-            test_keys.add(key)
-    
+        print(f"\n=== 분할 키 생성 ===")
+        print(f"총 분할 키 수: {len(split_keys)}개")
+        
+        # 2. 각 키별로 good/bad 비율을 유지하면서 stratified split 수행
+        key_quality_groups = defaultdict(lambda: {'good': [], 'bad': []})
+        for img in yolo_images:
+            if not img.get('is_augmented', False):
+                key = img['image_id']
+                quality = img['quality']
+                key_quality_groups[key][quality].append(img)
+        
+        # 각 키별로 good/bad 비율 계산
+        key_ratios = {}
+        for key in split_keys:
+            good_count = len(key_quality_groups[key]['good'])
+            bad_count = len(key_quality_groups[key]['bad'])
+            total_count = good_count + bad_count
+            if total_count > 0:
+                good_ratio = good_count / total_count
+                key_ratios[key] = good_ratio
+            else:
+                key_ratios[key] = 0.0
+        
+        # good/bad 비율별로 키들을 그룹화
+        ratio_groups = defaultdict(list)
+        for key, ratio in key_ratios.items():
+            ratio_groups[ratio].append(key)
+        
+        print(f"good/bad 비율 그룹 수: {len(ratio_groups)}개")
+        for ratio, keys in list(ratio_groups.items())[:5]:
+            print(f"  비율 {ratio:.2f}: {len(keys)}개 키")
+        
+        # 각 비율 그룹별로 stratified split 수행
+        train_keys = set()
+        val_keys = set()
+        test_keys = set()
+        
+        for ratio, keys in ratio_groups.items():
+            random.shuffle(keys)
+            n_total = len(keys)
+            n_train = int(n_total * ratios[0])
+            n_val = int(n_total * ratios[1])
+            n_test = n_total - n_train - n_val
+            
+            for key in keys[:n_train]:
+                train_keys.add(key)
+            for key in keys[n_train:n_train+n_val]:
+                val_keys.add(key)
+            for key in keys[n_train+n_val:]:
+                test_keys.add(key)
+        
     print(f"train 키: {len(train_keys)}개")
     print(f"val 키: {len(val_keys)}개")
     print(f"test 키: {len(test_keys)}개")
     
-    # 3. YOLO 이미지 분할
-    yolo_original = [img for img in yolo_images if not img.get('is_augmented', False)]
-    yolo_augmented = [img for img in yolo_images if img.get('is_augmented', False)]
-    
-    yolo_train = []
-    yolo_val = []
-    yolo_test = []
-    
-    for img in yolo_original:
-        key = img['image_id']
-        if key in train_keys:
-            yolo_train.append(img)
-        elif key in val_keys:
-            yolo_val.append(img)
-        elif key in test_keys:
-            yolo_test.append(img)
-    
-    # YOLO 증강 이미지 추가 (train에만)
-    yolo_aug_matching_count = 0
-    for aug_img in yolo_augmented:
-        key = aug_img['image_id']
-        if key in train_keys:
-            yolo_train.append(aug_img)
-            yolo_aug_matching_count += 1
-    
-    print(f"YOLO train에 추가된 증강 이미지: {yolo_aug_matching_count}개")
+    # 3. YOLO 이미지 분할 (기존 split 키를 사용하는 경우 건너뛰기)
+    if existing_split_keys is None:
+        # 새로운 split 생성 시에만 YOLO 이미지 분할 수행
+        yolo_original = [img for img in yolo_images if not img.get('is_augmented', False)]
+        yolo_augmented = [img for img in yolo_images if img.get('is_augmented', False)]
+        
+        yolo_train = []
+        yolo_val = []
+        yolo_test = []
+        
+        for img in yolo_original:
+            key = img['image_id']
+            if key in train_keys:
+                yolo_train.append(img)
+            elif key in val_keys:
+                yolo_val.append(img)
+            elif key in test_keys:
+                yolo_test.append(img)
+        
+        # YOLO 증강 이미지 추가 (train에만)
+        yolo_aug_matching_count = 0
+        for aug_img in yolo_augmented:
+            key = aug_img['image_id']
+            if key in train_keys:
+                yolo_train.append(aug_img)
+                yolo_aug_matching_count += 1
+        
+        print(f"YOLO train에 추가된 증강 이미지: {yolo_aug_matching_count}개")
+    else:
+        # 기존 split 키를 사용하는 경우: YOLO split은 생성하지 않음
+        yolo_train = []
+        yolo_val = []
+        yolo_test = []
+        print("기존 split 키 사용: YOLO split은 생성하지 않습니다.")
     
     # 4. DINO 이미지 분할
     dino_original = [img for img in dino_images if not img.get('is_augmented', False)]
@@ -600,6 +633,7 @@ def unified_stratified_split(yolo_images, dino_images, ratios):
     
     matched_count = 0
     unmatched_count = 0
+    unmatched_samples = []  # 디버깅용
     
     for img in dino_original:
         key = img['original_image_id']
@@ -614,9 +648,38 @@ def unified_stratified_split(yolo_images, dino_images, ratios):
             matched_count += 1
         else:
             unmatched_count += 1
+            if unmatched_count <= 10:  # 처음 10개만 저장
+                unmatched_samples.append({
+                    'original_image_id': key,
+                    'path': img.get('path', ''),
+                    'img_name': img.get('img_name', os.path.basename(img.get('path', '')))
+                })
     
     print(f"매칭된 DINO 원본 이미지: {matched_count}개")
     print(f"매칭되지 않은 DINO 원본 이미지: {unmatched_count}개")
+    
+    if unmatched_count > 0:
+        print(f"\n⚠️  매칭 실패 샘플 (처음 10개):")
+        for sample in unmatched_samples:
+            print(f"  - ID: {sample['original_image_id']}")
+            print(f"    파일: {sample['img_name']}")
+            print(f"    경로: {sample['path']}")
+        
+        # YOLO split 키 샘플 출력 (비교용)
+        print(f"\nYOLO split 키 샘플 (비교용, 처음 5개씩):")
+        sample_keys = list(train_keys)[:5] + list(val_keys)[:5] + list(test_keys)[:5]
+        for key in sample_keys:
+            print(f"  - {key}")
+        
+        # 매칭 실패 원인 분석: DINO 이미지의 original_image_id와 YOLO split 키 비교
+        print(f"\n🔍 매칭 실패 원인 분석:")
+        dino_original_ids = set(img['original_image_id'] for img in dino_original)
+        missing_in_dino = train_keys | val_keys | test_keys
+        missing_in_dino = missing_in_dino - dino_original_ids
+        print(f"  - YOLO split에 있지만 DINO에서 찾을 수 없는 ID: {len(missing_in_dino)}개")
+        if len(missing_in_dino) > 0:
+            print(f"  - 샘플 (처음 5개): {list(missing_in_dino)[:5]}")
+            print(f"  - 이는 해당 원본 이미지에 대한 크롭이 존재하지 않거나, 크롭 파일명에서 ID 추출이 실패했을 가능성이 있습니다.")
     
     # train에 선택된 원본 이미지들의 키 추출
     train_original_keys = set()
@@ -648,7 +711,11 @@ def unified_stratified_split(yolo_images, dino_images, ratios):
     random.shuffle(dino_val)
     random.shuffle(dino_test)
     
-    return (yolo_train, yolo_val, yolo_test), (dino_train, dino_val, dino_test)
+    yolo_splits = {'train': yolo_train, 'val': yolo_val, 'test': yolo_test}
+    dino_splits = {'train': dino_train, 'val': dino_val, 'test': dino_test}
+    split_keys_dict = {'train': train_keys, 'val': val_keys, 'test': test_keys}
+    
+    return yolo_splits, dino_splits, split_keys_dict
 
 
 def write_split_files(yolo_splits, dino_splits, name='', area=None):
@@ -695,7 +762,6 @@ def write_split_files(yolo_splits, dino_splits, name='', area=None):
     
     # YOLO용 파일 저장 (경로만)
     # Door 모드에서는 high 영역 처리 시에만 YOLO 파일 저장
-    yolo_train, yolo_val, yolo_test = yolo_splits
     missing_yolo = []
     
     def write_paths(file_path, imgs):
@@ -710,11 +776,26 @@ def write_split_files(yolo_splits, dino_splits, name='', area=None):
                     missing_yolo.append(p)
         return written
     
-    # Door 모드가 아니거나, Door 모드에서 high 영역일 때만 YOLO 파일 저장
-    if area is None or area == 'high':
-        yolo_train_written = write_paths(yolo_train_file, yolo_train)
-        yolo_val_written = write_paths(yolo_val_file, yolo_val)
-        yolo_test_written = write_paths(yolo_test_file, yolo_test)
+    # YOLO splits 처리 (딕셔너리 또는 튜플 형식 지원)
+    if yolo_splits is not None:
+        if isinstance(yolo_splits, dict):
+            yolo_train = yolo_splits.get('train', [])
+            yolo_val = yolo_splits.get('val', [])
+            yolo_test = yolo_splits.get('test', [])
+        else:
+            # 튜플 형식 (하위 호환성)
+            yolo_train, yolo_val, yolo_test = yolo_splits
+        
+        # Door 모드가 아니거나, Door 모드에서 high 영역일 때만 YOLO 파일 저장
+        if area is None or area == 'high':
+            yolo_train_written = write_paths(yolo_train_file, yolo_train)
+            yolo_val_written = write_paths(yolo_val_file, yolo_val)
+            yolo_test_written = write_paths(yolo_test_file, yolo_test)
+        else:
+            # mid/low 영역에서는 YOLO 파일 저장하지 않음
+            yolo_train_written = 0
+            yolo_val_written = 0
+            yolo_test_written = 0
         
         if missing_yolo:
             miss_file = txt_dir / f'missing_yolo_{name if name else "default"}.txt'
@@ -728,7 +809,15 @@ def write_split_files(yolo_splits, dino_splits, name='', area=None):
         yolo_test_written = 0
     
     # DINO용 파일 저장 (경로 + 라벨)
-    dino_train, dino_val, dino_test = dino_splits
+    # DINO splits 처리 (딕셔너리 또는 튜플 형식 지원)
+    if isinstance(dino_splits, dict):
+        dino_train = dino_splits.get('train', [])
+        dino_val = dino_splits.get('val', [])
+        dino_test = dino_splits.get('test', [])
+    else:
+        # 튜플 형식 (하위 호환성)
+        dino_train, dino_val, dino_test = dino_splits
+    
     missing_dino = []
     
     def write_paths_with_label(file_path, imgs):
@@ -927,6 +1016,7 @@ def main():
         
         # Door 모드: 각 영역(high/mid/low)별로 별도 split 생성
         areas = ['high', 'mid', 'low']
+        yolo_split_keys = None  # high 영역 처리 시 결정된 split 키 저장
         
         for area in areas:
             print(f"\n{'='*60}")
@@ -948,18 +1038,28 @@ def main():
             
             print(f"\n[{area.upper()}] 총 {len(dino_images)}개 DINO용 이미지 수집 완료")
             
-            # 통합 분할 수행 (YOLO는 첫 번째 영역 처리 시 한 번만 저장)
-            yolo_splits, dino_splits = unified_stratified_split(all_yolo_images, dino_images, SPLIT_RATIO)
-            
-            # 파일에 저장 (YOLO는 첫 번째 영역에서만 저장, DINO는 각 영역별로 저장)
+            # 통합 분할 수행
+            # high 영역: 새로운 split 생성 (YOLO split 결정)
+            # mid/low 영역: high 영역에서 결정된 split 키 재사용
             if area == 'high':
-                # YOLO 파일은 high 영역 처리 시 한 번만 저장
+                # high 영역: 새로운 split 생성
+                yolo_splits, dino_splits, yolo_split_keys = unified_stratified_split(
+                    all_yolo_images, dino_images, SPLIT_RATIO, existing_split_keys=None
+                )
+                # 파일에 저장 (YOLO는 high 영역에서만 저장)
                 write_split_files(yolo_splits, dino_splits, args.name, area=area)
             else:
-                # DINO만 저장 (YOLO는 None으로 전달하여 저장하지 않음)
-                # YOLO splits를 None으로 전달하면 저장하지 않도록 수정 필요
-                # 간단하게: yolo_splits를 그대로 전달하되, area가 있으면 DINO만 출력하도록
-                write_split_files(yolo_splits, dino_splits, args.name, area=area)
+                # mid/low 영역: high 영역에서 결정된 split 키 재사용
+                if yolo_split_keys is None:
+                    print(f"⚠️  경고: {area.upper()} 영역 처리 전에 high 영역의 split 키가 없습니다.")
+                    continue
+                
+                # 기존 split 키를 사용하여 DINO split만 생성 (YOLO는 None으로 전달)
+                _, dino_splits, _ = unified_stratified_split(
+                    [], dino_images, SPLIT_RATIO, existing_split_keys=yolo_split_keys
+                )
+                # DINO만 저장 (YOLO는 None으로 전달)
+                write_split_files(None, dino_splits, args.name, area=area)
         
         return  # Door 모드는 여기서 종료
     
@@ -971,7 +1071,7 @@ def main():
     print(f"\n총 {len(dino_images)}개 DINO용 이미지 수집 완료")
     
     # 통합 분할 수행
-    yolo_splits, dino_splits = unified_stratified_split(all_yolo_images, dino_images, SPLIT_RATIO)
+    yolo_splits, dino_splits, _ = unified_stratified_split(all_yolo_images, dino_images, SPLIT_RATIO, existing_split_keys=None)
     
     # 파일에 저장
     write_split_files(yolo_splits, dino_splits, args.name)

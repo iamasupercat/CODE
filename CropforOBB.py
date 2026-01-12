@@ -442,15 +442,27 @@ def get_defect_type_from_excel(df, image_filename):
     return (result if result else None), False, null_areas
 
 
-def clean_directory(target_dir):
+def clean_directory(target_dir, mode):
     """
-    지정된 날짜 폴더 내의 모든 파트(frontdoor, hood 등)에서
+    지정된 날짜 폴더 내의 해당 모드에 맞는 파트에서만
     crop_* 및 debug_crop 폴더를 삭제합니다.
+    
+    Args:
+        target_dir: 날짜 폴더 경로
+        mode: 'door' 또는 'bolt'
     """
-    parts = ['frontdoor', 'frontfender', 'hood', 'trunklid']
+    if mode == 'door':
+        # door 모드: frontdoor만 처리
+        parts = ['frontdoor']
+    elif mode == 'bolt':
+        # bolt 모드: frontfender, hood, trunklid만 처리
+        parts = ['frontfender', 'hood', 'trunklid']
+    else:
+        return
+    
     sub_dirs = ['bad', 'good']
     
-    print(f"🧹 [{os.path.basename(target_dir)}] 청소(삭제) 시작...")
+    print(f"🧹 [{os.path.basename(target_dir)}] 청소(삭제) 시작... (모드: {mode})")
     
     cleaned_count = 0
     
@@ -771,7 +783,7 @@ def main():
     if args.clean:
         print("\n=== [CLEAN MODE] 기존 결과물 삭제 ===")
         for target_dir in target_dirs:
-            clean_directory(target_dir)
+            clean_directory(target_dir, args.mode)
         print("=== 청소 완료, 데이터 처리를 시작합니다 ===\n")
     
     for target_dir in target_dirs:
