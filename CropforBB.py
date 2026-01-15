@@ -36,7 +36,6 @@ from PIL import Image, ImageDraw, ImageOps
 import math
 import shutil
 import glob
-from dataset_utils import get_dataset_path, print_dataset_path
 
 
 def collect_date_range_folders(base_path: str, start: str, end: str):
@@ -376,8 +375,8 @@ def main():
                         help='실행 전 기존 crop_bolt, crop_bolt_aug, debug_crop 폴더 삭제')
     args = parser.parse_args()
     
-    base_path = get_dataset_path()
-    print_dataset_path(base_path)
+   # base_path = "/workspace/datasets"
+    base_path = "/workspace/datasets"
     obb_base_path = os.path.join(base_path, "OBB")
     
     # 일반 폴더 수집

@@ -32,7 +32,6 @@ from math import cos, sin
 from pathlib import Path
 import math
 import shutil
-from dataset_utils import get_dataset_path, print_dataset_path
 import glob
 
 
@@ -752,8 +751,8 @@ def main():
     parser.add_argument('--clean', action='store_true', help='실행 전 기존 crop, debug 폴더 삭제')
     args = parser.parse_args()
     
-    base_path = get_dataset_path()
-    print_dataset_path(base_path)
+   # base_path = "/workspace/datasets"
+    base_path = "/workspace/datasets"
     obb_base_path = os.path.join(base_path, "OBB")
     
     # 일반 폴더 수집

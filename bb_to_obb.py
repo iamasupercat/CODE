@@ -24,7 +24,6 @@ import os
 import glob
 import argparse
 from pathlib import Path
-from dataset_utils import get_dataset_path, print_dataset_path
 
 
 def collect_date_range_folders(base_path: str, start: str, end: str):
@@ -173,8 +172,7 @@ def main():
     mode = 'bb' if args.to_bb else 'obb'
     mode_name = 'BB' if mode == 'bb' else 'OBB'
 
-    base_path = get_dataset_path()
-    print_dataset_path(base_path)
+    base_path = "/workspace/datasets"
     start_date = "0718"
     end_date = "0806"
 

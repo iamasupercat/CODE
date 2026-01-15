@@ -89,7 +89,6 @@ import cv2
 import numpy as np
 import argparse
 from glob import glob
-from dataset_utils import get_dataset_path, print_dataset_path
 
 
 def collect_date_range_folders(base_path: str, start: str, end: str):
@@ -284,8 +283,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     # 날짜를 절대경로로 변환
-    base_path = get_dataset_path()
-    print_dataset_path(base_path)
+    # base_path = "/workspace/datasets"
+    base_path = "/workspace/datasets"
     obb_base_path = os.path.join(base_path, "OBB")
 
     # 일반 폴더

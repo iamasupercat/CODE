@@ -46,7 +46,6 @@ import shutil
 import sys
 import argparse
 import math
-from dataset_utils import get_dataset_path, print_dataset_path
 
 def collect_date_range_folders(base_path: str, start: str, end: str, include_obb: bool = True):
     """
@@ -365,8 +364,8 @@ def main():
     args = parser.parse_args()
     
     # 날짜를 절대경로로 변환
-    base_path = get_dataset_path()
-    print_dataset_path(base_path)
+       # base_path = "/workspace/datasets"
+    base_path = "/workspace/datasets"
     if args.date_range:
         start, end = args.date_range
         if args.obb_only:

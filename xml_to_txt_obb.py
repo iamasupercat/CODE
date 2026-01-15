@@ -17,7 +17,6 @@ from pathlib import Path
 from collections import defaultdict
 import re
 import html
-from dataset_utils import get_dataset_path, print_dataset_path
 
 # 클래스명 정규화 매핑 (한글/영어 클래스명 -> 표준 영어 클래스명)
 CLASS_NAME_MAPPING = {
@@ -287,8 +286,7 @@ def main():
     
     args = parser.parse_args()
     
-    base_path = get_dataset_path()
-    print_dataset_path(base_path)
+    base_path = "/workspace/datasets"
     
     if args.folder:
         # 단일 폴더 처리
