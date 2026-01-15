@@ -64,6 +64,7 @@ import glob
 from pathlib import Path
 from collections import defaultdict
 import re
+from dataset_utils import get_dataset_path, print_dataset_path
 
 random.seed(42)
 
@@ -584,7 +585,8 @@ def main():
     
     args = parser.parse_args()
     
-    base_path = "/workspace/datasets"
+    base_path = get_dataset_path()
+    print_dataset_path(base_path)
     
     # 일반 폴더
     if args.date_range:

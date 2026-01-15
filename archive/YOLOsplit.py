@@ -54,6 +54,7 @@ import random
 import argparse
 from pathlib import Path
 from collections import defaultdict
+from dataset_utils import get_dataset_path, print_dataset_path
 
 random.seed(42)
 
@@ -334,7 +335,8 @@ def main():
                         help='good용 일반 폴더 날짜 구간 (MMDD 또는 YYYYMMDD)')
     args = parser.parse_args()
 
-    base_path = "/workspace/datasets"
+    base_path = get_dataset_path()
+    print_dataset_path(base_path)
     
     # 일반 폴더 처리 (기본 범위)
     if args.date_range:
