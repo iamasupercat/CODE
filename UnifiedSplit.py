@@ -19,7 +19,7 @@ YOLO와 DINO를 위한 통합 학습 데이터셋 split 생성 스크립트
         --date-range 0807 1109 \
         --obb-date-range 0616 0806 \
         --subfolders frontdoor \
-        --name Door
+        --name dOOR
 
 결과:
     Bolt 모드:
@@ -40,6 +40,7 @@ import argparse
 import re
 from pathlib import Path
 from collections import defaultdict
+from dataset_utils import get_dataset_path, print_dataset_path
 
 random.seed(42)
 
@@ -412,12 +413,11 @@ def collect_door_dino_images(base_folders, subfolder_names, original_folders, me
                             crop_file_path = os.path.join(subdir_path, crop_filename)
                             
                             if os.path.exists(crop_file_path):
-                                if base_folder.startswith('/home/ciw/work/datasets/'):
-                                    folder_name = base_folder[len('/home/ciw/work/datasets/'):]
-                                else:
-                                    folder_name = os.path.basename(base_folder.rstrip(os.sep))
+                                # 실제 파일 경로를 절대 경로로 사용
+                                absolute_path = os.path.abspath(crop_file_path)
                                 
-                                absolute_path = f"/home/ciw/work/datasets/{folder_name}/{subfolder_name}/{quality}/{crop_folder}/{subdir}/{crop_filename}"
+                                # base_folder 이름 추출 (표시용)
+                                folder_name = os.path.basename(base_folder.rstrip(os.sep))
                                 
                                 # 라벨 결정
                                 original_label = int(subdir)
@@ -456,12 +456,11 @@ def collect_door_dino_images(base_folders, subfolder_names, original_folders, me
                                     crop_aug_file_path = os.path.join(subdir_path, crop_aug_filename)
                                     
                                     if os.path.exists(crop_aug_file_path):
-                                        if base_folder.startswith('/home/ciw/work/datasets/'):
-                                            folder_name = base_folder[len('/home/ciw/work/datasets/'):]
-                                        else:
-                                            folder_name = os.path.basename(base_folder.rstrip(os.sep))
+                                        # 실제 파일 경로를 절대 경로로 사용
+                                        absolute_path = os.path.abspath(crop_aug_file_path)
                                         
-                                        absolute_path = f"/home/ciw/work/datasets/{folder_name}/{subfolder_name}/{quality}/{crop_folder}/{subdir}/{crop_aug_filename}"
+                                        # base_folder 이름 추출 (표시용)
+                                        folder_name = os.path.basename(base_folder.rstrip(os.sep))
                                         
                                         original_label = int(subdir)
                                         if merge_classes and original_label in [1, 2, 3]:
@@ -887,7 +886,9 @@ def main():
     
     args = parser.parse_args()
     
-    base_path = "/home/ciw/work/datasets"
+    # 공통 함수를 사용하여 경로 가져오기
+    base_path = get_dataset_path()
+    print_dataset_path(base_path)
     
     # 일반 폴더 처리
     if args.date_range:

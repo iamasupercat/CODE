@@ -259,9 +259,9 @@ def main():
         print("사용법: python debug_crop.py <원본_이미지_경로>")
         print("\n예시:")
         print("  # 절대 경로")
-        print("  python debug_crop.py /home/ciw/work/datasets/1010/frontfender/good/images/good_8128_1_13_62c4b142-e159-4c33-9368-98c3502cc696.jpg")
+        print("  python debug_crop.py /workspace/datasets/1010/frontfender/good/images/good_8128_1_13_62c4b142-e159-4c33-9368-98c3502cc696.jpg")
         print("\n  # 상대 경로 (datasets 폴더에서 실행)")
-        print("  cd /home/ciw/work/datasets")
+        print("  cd /workspace/datasets")
         print("  python CODE/debug_crop.py 1010/frontfender/good/images/good_8128_1_13_62c4b142-e159-4c33-9368-98c3502cc696.jpg")
         sys.exit(1)
     

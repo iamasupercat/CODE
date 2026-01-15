@@ -9,7 +9,7 @@
 ### 1. 가상환경 생성 및 활성화
 
 ```bash
-cd /home/ciw/work/datasets/CODE
+cd /workspace/datasets/CODE
 
 # # 가상환경 생성 (한 번만) <- 가상환경은 이미 생성해둠
 # python3 -m venv venv
@@ -300,7 +300,7 @@ YOLO와 DINO 훈련용 split을 **동일한 기준(원본 이미지 ID)** 으로
 
 **사용법 (예시):**
 ```bash
-cd /home/ciw/work/datasets/CODE
+cd /workspace/datasets/CODE
 
 # Bolt 모드 (4클래스, YOLO+DINO 통합 split)
 python UnifiedSplit.py \
@@ -541,10 +541,10 @@ Augmentation 결과를 시각화하는 디버그 스크립트입니다.
 **사용법:**
 ```bash
 # 절대 경로
-python debug_aug.py /home/ciw/work/datasets/0718/frontfender/bad/images/bad_0216_1_1_5a269cdf-35fe-4259-a086-7ccab92112ae.jpg
+python debug_aug.py /workspace/datasets/0718/frontfender/bad/images/bad_0216_1_1_5a269cdf-35fe-4259-a086-7ccab92112ae.jpg
 
 # 상대 경로 (datasets 폴더에서 실행)
-cd /home/ciw/work/datasets
+cd /workspace/datasets
 python CODE/debug_aug.py 0718/frontfender/bad/images/bad_0216_1_1_5a269cdf-35fe-4259-a086-7ccab92112ae.jpg
 ```
 
@@ -565,10 +565,10 @@ CropforBB.py의 크롭 결과를 시각화하는 디버그 스크립트입니다
 **사용법:**
 ```bash
 # 절대 경로
-python debug_crop.py /home/ciw/work/datasets/1010/frontfender/good/images/good_8128_1_13_62c4b142-e159-4c33-9368-98c3502cc696.jpg
+python debug_crop.py /workspace/datasets/1010/frontfender/good/images/good_8128_1_13_62c4b142-e159-4c33-9368-98c3502cc696.jpg
 
 # 상대 경로
-cd /home/ciw/work/datasets
+cd /workspace/datasets
 python CODE/debug_crop.py 1010/trunklid/good/images/good_8128_1_13_62c4b142-e159-4c33-9368-98c3502cc696.jpg
 ```
 
@@ -592,10 +592,10 @@ XML → TXT 변환 결과를 시각화하는 디버그 스크립트입니다.
 **사용법:**
 ```bash
 # 절대 경로
-python debug_xml_txt.py /home/ciw/work/datasets/OBB/0718/hood/good/images/good_9362_1_e97d8f94-e26c-455d-9c96-40a63f6a2c83.jpg
+python debug_xml_txt.py /workspace/datasets/OBB/0718/hood/good/images/good_9362_1_e97d8f94-e26c-455d-9c96-40a63f6a2c83.jpg
 
 # 상대 경로
-cd /home/ciw/work/datasets
+cd /workspace/datasets
 python CODE/debug_xml_txt.py OBB/0718/hood/good/images/good_9362_1_e97d8f94-e26c-455d-9c96-40a63f6a2c83.jpg
 ```
 
@@ -700,8 +700,8 @@ python verify_unified_split.py --name Door --all-areas
 - **4자리 (MMDD)**: 예: `0616`, `1109`
 
 ### 기본 경로
-- 일반 폴더: `/home/ciw/work/datasets/{날짜}/`
-- OBB 폴더: `/home/ciw/work/datasets/OBB/{날짜}/`
+- 일반 폴더: `/workspace/datasets/{날짜}/`
+- OBB 폴더: `/workspace/datasets/OBB/{날짜}/`
 
 ### 출력 디렉토리
 - split 스크립트는 `TXT/` 디렉토리에 결과 파일을 저장합니다.
@@ -747,7 +747,7 @@ python verify_unified_split.py --name Door --all-areas
 
 ### 스크립트 실행 권한
 ```bash
-chmod +x /home/ciw/work/datasets/CODE/*.py
+chmod +x /workspace/datasets/CODE/*.py
 ```
 
 ### Python 경로 확인

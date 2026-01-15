@@ -46,6 +46,7 @@ import shutil
 import sys
 import argparse
 import math
+from dataset_utils import get_dataset_path, print_dataset_path
 
 def collect_date_range_folders(base_path: str, start: str, end: str, include_obb: bool = True):
     """
@@ -359,12 +360,13 @@ def main():
                         help='날짜 구간 선택 (MMDD 또는 YYYYMMDD). 예: --date-range 0715 0805')
     parser.add_argument('--subfolder', nargs='+', help='Specific subfolders to process (e.g., frontdoor hood)')
     parser.add_argument('--obb-only', action='store_true', 
-                        help='OBB 폴더만 처리 (기본 경로는 제외하고 /home/ciw/work/datasets/OBB/ 아래만 검색)')
+                        help='OBB 폴더만 처리 (기본 경로는 제외하고 /workspace/datasets/OBB/ 아래만 검색)')
     
     args = parser.parse_args()
     
     # 날짜를 절대경로로 변환
-    base_path = "/home/ciw/work/datasets"
+    base_path = get_dataset_path()
+    print_dataset_path(base_path)
     if args.date_range:
         start, end = args.date_range
         if args.obb_only:

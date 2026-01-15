@@ -15,6 +15,7 @@ import pandas as pd
 from pathlib import Path
 from collections import defaultdict
 import re
+from dataset_utils import get_dataset_path
 
 
 def is_date_in_range(date_str, start_date, end_date):
@@ -108,7 +109,7 @@ def process_frontdoor_excel(excel_path):
 
 def process_date_range(start_date, end_date):
     """지정된 날짜 범위의 frontdoor 데이터를 처리"""
-    base_dir = "/home/ciw/work/datasets"
+    base_dir = get_dataset_path()
     
     # 전체 통계
     total_counts = {

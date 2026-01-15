@@ -238,10 +238,10 @@ def main():
         print("사용법: python debug_aug.py <원본_이미지_경로>")
         print("\n예시:")
         print("  # 절대 경로")
-        print("  python debug_aug.py /home/ciw/work/datasets/0718/frontfender/bad/images/bad_0216_1_1_5a269cdf-35fe-4259-a086-7ccab92112ae.jpg")
-        print("  python debug_aug.py /home/ciw/work/datasets/1103/frontfender/bad/images/bad_6921_1_7_7576ea8b-45c4-4df1-8b49-6eb41704e7fa.jpg")
+        print("  python debug_aug.py /workspace/datasets/0718/frontfender/bad/images/bad_0216_1_1_5a269cdf-35fe-4259-a086-7ccab92112ae.jpg")
+        print("  python debug_aug.py /workspace/datasets/1103/frontfender/bad/images/bad_6921_1_7_7576ea8b-45c4-4df1-8b49-6eb41704e7fa.jpg")
         print("\n  # 상대 경로 (datasets 폴더에서 실행)")
-        print("  cd /home/ciw/work/datasets")
+        print("  cd /workspace/datasets")
         print("  python CODE/debug_aug.py 0718/frontfender/bad/images/bad_0216_1_1_5a269cdf-35fe-4259-a086-7ccab92112ae.jpg")
         sys.exit(1)
     

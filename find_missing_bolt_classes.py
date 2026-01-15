@@ -27,6 +27,7 @@ import os
 import glob
 import argparse
 from pathlib import Path
+from dataset_utils import get_dataset_path, print_dataset_path
 
 IMG_EXTS = {'.jpg', '.jpeg', '.png', '.bmp'}
 
@@ -215,7 +216,8 @@ def main():
     
     args = parser.parse_args()
     
-    base_path = "/home/ciw/work/datasets"
+    base_path = get_dataset_path()
+    print_dataset_path(base_path)
     
     # 일반 폴더 처리
     if args.date_range:
